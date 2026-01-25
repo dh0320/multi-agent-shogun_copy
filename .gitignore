@@ -1,71 +1,15 @@
-# ══════════════════════════════════════════════════
-# Whitelist-based .gitignore
-# デフォルト全除外 → OSS公開対象のみ許可
-# ══════════════════════════════════════════════════
+# Order file (internal use only)
+claude-shogun-orders.md
 
-# Step 1: 全て除外
-*
+# Claude Code settings
+.claude/
 
-# Step 2: ディレクトリの探索を許可（中身は個別に許可）
-!*/
+# Test outputs (generated during testing)
+test_output/
 
-# Step 3: OSS公開対象ファイルを許可
-!.gitignore
-!.gitattributes
-!CLAUDE.md
-!LICENSE
-!README.md
-!README_ja.md
+# Generated skills (local development)
+skills/
 
-# Claude Code settings (spinner verbs only, no secrets)
-!.claude/
-!.claude/settings.json
-
-# Instructions (core OSS)
-!instructions/
-!instructions/shogun.md
-!instructions/karo.md
-!instructions/ashigaru.md
-
-# Startup script
-!shutsujin_departure.sh
-
-# Templates
-!templates/
-!templates/**
-
-# Context README
-!context/
-!context/README.md
-
-# Scripts
-!scripts/
-!scripts/inbox_write.sh
-!scripts/ntfy.sh
-!scripts/ntfy_listener.sh
-
-
-# SayTask (sample template only, not actual data)
-!saytask/
-!saytask/streaks.yaml.sample
-
-# Docs
-!docs/
-!docs/philosophy.md
-
-# Screenshots (masked — no secrets)
-!images/
-!images/screenshots/
-!images/screenshots/ntfy_saytask_rename.jpg
-!images/screenshots/ntfy_cmd043_progress.jpg
-!images/screenshots/ntfy_bloom_oc_test.jpg
-!images/screenshots/ntfy_persona_eval_complete.jpg
-!images/screenshots/ntfy_tasklist_v1_before.jpg
-!images/screenshots/ntfy_tasklist_v2_aligned.jpg
-!images/screenshots/ntfy_tasklist_final.jpg
-!images/screenshots/tdd_ndd_rdd.png
-
-# Skills (skill-creator only)
-!skills/
-!skills/skill-creator/
-!skills/skill-creator/SKILL.md
+# Temporary files
+*.tmp
+*.bak
