@@ -1,0 +1,20 @@
+# claude-shogun 設定ファイル
+
+# スキル設定
+skill:
+  # スキル保存先（生成されたスキルはここに保存）
+  save_path: "~/.claude/skills/shogun-generated/"
+
+  # ローカルスキル保存先（このプロジェクト専用）
+  local_path: "~/claude-shogun/skills/"
+
+# ポーリング間隔（秒）
+polling_interval:
+  shogun: 10
+  karo: 5
+  ashigaru: 5
+
+# ログ設定
+logging:
+  level: info  # debug | info | warn | error
+  path: "~/claude-shogun/logs/"
