@@ -17,5 +17,11 @@ skills/
 # Demo/analysis outputs (generated during tasks)
 demo_output/
 
+# Runtime data (generated during operation)
+output/
+queue/research/
+queue/tasks/
+queue/reports/
+
 # Memory MCP data (local to each installation)
 memory/
