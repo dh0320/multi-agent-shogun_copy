@@ -1,4 +1,4 @@
-# claude-shogun 設定ファイル
+# multi-agent-shogun 設定ファイル
 
 # 言語設定
 # ja: 日本語（戦国風日本語のみ、併記なし）
@@ -13,6 +13,13 @@ skill:
 
   # ローカルスキル保存先（このプロジェクト専用）
   local_path: "~/claude-shogun/skills/"
+
+# スクリーンショット設定
+screenshot:
+  # Windows側パス（参考用）- 各自の環境に合わせて変更
+  windows_path: "C:\\Users\\{{USERNAME}}\\Pictures\\Screenshots"
+  # WSL側パス（実際に使用）- 各自の環境に合わせて変更
+  path: "/mnt/c/Users/{{USERNAME}}/Pictures/Screenshots"
 
 # ログ設定
 logging:
