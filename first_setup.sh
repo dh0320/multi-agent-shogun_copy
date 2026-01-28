@@ -226,6 +226,41 @@ else
 fi
 
 # ============================================================
+# STEP 4.5: Gemini CLI チェック (Optional)
+# ============================================================
+log_step "STEP 4.5: Gemini CLI チェック (Optional)"
+
+if command -v gemini &> /dev/null; then
+    GEMINI_VERSION=$(gemini --version 2>/dev/null || echo "unknown")
+    log_success "Gemini CLI がインストール済みです ($GEMINI_VERSION)"
+    RESULTS+=("Gemini CLI: OK ($GEMINI_VERSION)")
+else
+    log_info "Gemini CLI がインストールされていません（Claude Codeのみ使用する場合は不要）"
+
+    if command -v npm &> /dev/null; then
+        echo "  Gemini CLI を使用しますか？"
+        read -p "  インストールしますか? [y/N]: " REPLY
+        REPLY=${REPLY:-N}
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Gemini CLI をインストール中..."
+            npm install -g @google/gemini-cli
+
+            if command -v gemini &> /dev/null; then
+                log_success "Gemini CLI インストール完了"
+                RESULTS+=("Gemini CLI: インストール完了")
+            else
+                log_error "Gemini CLI インストール失敗"
+                RESULTS+=("Gemini CLI: インストール失敗")
+            fi
+        else
+            RESULTS+=("Gemini CLI: 未インストール (スキップ)")
+        fi
+    else
+        RESULTS+=("Gemini CLI: 未インストール (npmなし)")
+    fi
+fi
+
+# ============================================================
 # STEP 5: ディレクトリ構造作成
 # ============================================================
 log_step "STEP 5: ディレクトリ構造作成"
@@ -274,6 +309,13 @@ if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     log_info "config/settings.yaml を作成中..."
     cat > "$SCRIPT_DIR/config/settings.yaml" << 'EOF'
 # multi-agent-shogun 設定ファイル
+
+# エージェント設定
+agent:
+  # 使用するCLIツール
+  # claude: Anthropic Claude Code (default)
+  # gemini: Google Gemini CLI
+  type: claude
 
 # 言語設定
 # ja: 日本語（戦国風日本語のみ、併記なし）

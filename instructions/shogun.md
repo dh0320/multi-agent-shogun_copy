@@ -111,6 +111,7 @@ memory:
   on_session_start:
     - action: ToolSearch
       query: "select:mcp__memory__read_graph"
+      condition: "if ToolSearch is available (Claude)"
     - action: mcp__memory__read_graph
   # 記憶するタイミング
   save_triggers:
@@ -252,8 +253,8 @@ command: "MCPを調査せよ"
 ## コンテキスト読み込み手順
 
 1. **Memory MCP で記憶を読み込む**（最優先）
-   - `ToolSearch("select:mcp__memory__read_graph")`
-   - `mcp__memory__read_graph()`
+   - Claude: `ToolSearch("select:mcp__memory__read_graph")` → `mcp__memory__read_graph()`
+   - Gemini: 直接 `mcp__memory__read_graph()`
 2. ~/multi-agent-shogun/CLAUDE.md を読む
 3. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
 4. config/projects.yaml で対象プロジェクト確認
@@ -292,10 +293,9 @@ command: "MCPを調査せよ"
 ### 🔴 セッション開始時（必須）
 
 **最初に必ず記憶を読み込め：**
-```
-1. ToolSearch("select:mcp__memory__read_graph")
-2. mcp__memory__read_graph()
-```
+
+- **Claude Code**: `ToolSearch("select:mcp__memory__read_graph")` → `mcp__memory__read_graph()`
+- **Gemini CLI**: 直接 `mcp__memory__read_graph()` を実行
 
 ### 記憶するタイミング
 
@@ -319,6 +319,9 @@ command: "MCPを調査せよ"
 
 ### MCPツールの使い方
 
+**Claude Codeの場合:**
+まず `ToolSearch` でツールを探してロードせよ。
+
 ```bash
 # まずツールをロード（必須）
 ToolSearch("select:mcp__memory__read_graph")
@@ -327,17 +330,25 @@ ToolSearch("select:mcp__memory__add_observations")
 
 # 読み込み
 mcp__memory__read_graph()
+```
 
-# 新規エンティティ作成
+**Gemini CLIの場合:**
+ツールは自動的に利用可能である。直接呼び出せ。
+
+```bash
+# 読み込み（直接呼び出す）
+mcp__memory__read_graph()
+```
+
+# 新規エンティティ作成（共通）
 mcp__memory__create_entities(entities=[
   {"name": "殿", "entityType": "user", "observations": ["シンプル好き"]}
 ])
 
-# 既存エンティティに追加
+# 既存エンティティに追加（共通）
 mcp__memory__add_observations(observations=[
   {"entityName": "殿", "contents": ["新しい好み"]}
 ])
-```
 
 ### 保存先
 `memory/shogun_memory.jsonl`

@@ -504,6 +504,40 @@ claude mcp list
 
 ## ⚙️ 設定
 
+### エージェント設定 (New!)
+
+`config/settings.yaml` で使用するAIエージェントを切り替えられます：
+
+```yaml
+agent:
+  # claude: Anthropic Claude Code (default)
+  # gemini: Google Gemini CLI
+  type: gemini
+```
+
+### Gemini CLI のセットアップ
+
+Gemini CLI を使用する場合の追加手順：
+
+1. **インストール**: `npm install -g @google/gemini-cli`
+   （初回セットアップスクリプトでもインストール可能です）
+2. **MCP設定**: Gemini CLI で MCP を使用するには、設定ファイル（通常 `~/.geminirc` またはプロジェクトごとの `settings.json`）に `mcpServers` を記述する必要があります。
+
+   **設定例:**
+   ```json
+   {
+     "mcpServers": {
+       "memory": {
+         "command": "npx",
+         "args": ["-y", "@modelcontextprotocol/server-memory"],
+         "env": {
+           "MEMORY_FILE_PATH": "/absolute/path/to/memory/shogun_memory.jsonl"
+         }
+       }
+     }
+   }
+   ```
+
 ### 言語設定
 
 `config/settings.yaml` を編集：

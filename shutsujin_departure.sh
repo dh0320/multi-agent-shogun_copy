@@ -19,6 +19,17 @@ if [ -f "./config/settings.yaml" ]; then
     LANG_SETTING=$(grep "^language:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "ja")
 fi
 
+# エージェント設定を読み取り（デフォルト: claude）
+AGENT_TYPE="claude"
+if [ -f "./config/settings.yaml" ]; then
+    # agentブロック内のtypeを探す（簡易実装）
+    CHECK_AGENT=$(grep -A 5 "^agent:" ./config/settings.yaml | grep "type:" | head -1 | awk '{print $2}')
+    if [ -n "$CHECK_AGENT" ]; then
+        AGENT_TYPE=$CHECK_AGENT
+    fi
+fi
+log_info "起動エージェント: $AGENT_TYPE"
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -332,13 +343,25 @@ log_success "  └─ 将軍の本陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: Claude Code 起動（--setup-only でスキップ）
+# STEP 6: AIエージェント起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    log_war "👑 全軍に Claude Code を召喚中..."
+    if [ "$AGENT_TYPE" = "gemini" ]; then
+        AGENT_NAME="Gemini CLI"
+        # Gemini用コマンド (--yolo: 自動承認)
+        SHOGUN_CMD="gemini --yolo"
+        WORKER_CMD="gemini --yolo"
+    else
+        AGENT_NAME="Claude Code"
+        # Claude用コマンド
+        SHOGUN_CMD="MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+        WORKER_CMD="claude --dangerously-skip-permissions"
+    fi
+
+    log_war "👑 全軍に $AGENT_NAME を召喚中..."
 
     # 将軍
-    tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+    tmux send-keys -t shogun "$SHOGUN_CMD"
     tmux send-keys -t shogun Enter
     log_info "  └─ 将軍、召喚完了"
 
@@ -347,12 +370,12 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 家老 + 足軽（9ペイン）
     for i in {0..8}; do
-        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
+        tmux send-keys -t "multiagent:0.$i" "$WORKER_CMD"
         tmux send-keys -t "multiagent:0.$i" Enter
     done
     log_info "  └─ 家老・足軽、召喚完了"
 
-    log_success "✅ 全軍 Claude Code 起動完了"
+    log_success "✅ 全軍 $AGENT_NAME 起動完了"
     echo ""
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -426,7 +449,7 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  Claude Code の起動を待機中（15秒）..."
+    echo "  $AGENT_NAME の起動を待機中（15秒）..."
     sleep 15
 
     # 将軍に指示書を読み込ませる
@@ -495,18 +518,15 @@ echo "  ╚═══════════════════════
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
-    echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
+    echo "  ⚠️  セットアップのみモード: AIエージェントは未起動です"
     echo ""
-    echo "  手動でClaude Codeを起動するには:"
+    echo "  手動で起動するには:"
     echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  # 将軍を召喚                                            │"
+    echo "  │  # Claude の場合:                                        │"
     echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
     echo "  │                                                          │"
-    echo "  │  # 家老・足軽を一斉召喚                                   │"
-    echo "  │  for i in {0..8}; do \\                                   │"
-    echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
-    echo "  │      'claude --dangerously-skip-permissions' Enter       │"
-    echo "  │  done                                                    │"
+    echo "  │  # Gemini の場合:                                        │"
+    echo "  │  tmux send-keys -t shogun 'gemini --yolo' Enter          │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
 fi

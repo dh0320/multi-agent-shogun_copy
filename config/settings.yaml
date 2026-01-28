@@ -1,5 +1,12 @@
 # multi-agent-shogun 設定ファイル
 
+# エージェント設定
+agent:
+  # 使用するCLIツール
+  # claude: Anthropic Claude Code (default)
+  # gemini: Google Gemini CLI
+  type: claude
+
 # 言語設定
 # ja: 日本語（戦国風日本語のみ、併記なし）
 # en: 英語（戦国風日本語 + 英訳併記）

@@ -498,6 +498,39 @@ What happens:
 
 ## ⚙️ Configuration
 
+### Agent Configuration (New!)
+
+You can switch the AI agent used in `config/settings.yaml`:
+
+```yaml
+agent:
+  # claude: Anthropic Claude Code (default)
+  # gemini: Google Gemini CLI
+  type: gemini
+```
+
+### Gemini CLI Setup
+
+If using Gemini CLI:
+
+1. **Install**: `npm install -g @google/gemini-cli`
+2. **MCP Setup**: To use MCP with Gemini CLI, add `mcpServers` to your configuration file (usually `~/.geminirc` or `settings.json`).
+
+   **Example:**
+   ```json
+   {
+     "mcpServers": {
+       "memory": {
+         "command": "npx",
+         "args": ["-y", "@modelcontextprotocol/server-memory"],
+         "env": {
+           "MEMORY_FILE_PATH": "/absolute/path/to/memory/shogun_memory.jsonl"
+         }
+       }
+     }
+   }
+   ```
+
 ### Language Setting
 
 Edit `config/settings.yaml`:
