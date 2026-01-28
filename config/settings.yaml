@@ -9,7 +9,7 @@ language: ja
 # シェル設定
 # bash: bash用プロンプト（\[\033[...m\] 形式）
 # zsh: zsh用プロンプト（%F{color}%B 形式）
-shell: zsh
+shell: bash
 
 # スキル設定
 skill:
