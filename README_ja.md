@@ -2,12 +2,13 @@
 
 <div align="center">
 
-**Claude Code マルチエージェント統率システム**
+**Claude Code / Gemini CLI マルチエージェント統率システム**
 
 *コマンド1つで、8体のAIエージェントが並列稼働*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
+[![Gemini CLI](https://img.shields.io/badge/Gemini-CLI-blue)](https://gemini.google.com/)
 [![tmux](https://img.shields.io/badge/tmux-required-green)](https://github.com/tmux/tmux)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -18,7 +19,7 @@
 
 ## これは何？
 
-**multi-agent-shogun** は、複数の Claude Code インスタンスを同時に実行し、戦国時代の軍制のように統率するシステムです。
+**multi-agent-shogun** は、複数の AIエージェント（Claude Code または Gemini CLI）を同時に実行し、戦国時代の軍制のように統率するシステムです。
 
 **なぜ使うのか？**
 - 1つの命令で、8体のAIワーカーが並列で実行
@@ -176,7 +177,7 @@ wsl --install
 
 ### `shutsujin_departure.sh` が行うこと：
 - ✅ tmuxセッションを作成（shogun + multiagent）
-- ✅ 全10エージェントでClaude Codeを起動
+- ✅ 全10エージェントでAIツール（Claude/Gemini）を起動
 - ✅ 各エージェントに指示書を自動読み込み
 - ✅ キューファイルをリセットして新しい状態に
 
@@ -195,8 +196,9 @@ wsl --install
 |------|-----------------|------|
 | WSL2 + Ubuntu | PowerShellで `wsl --install` | Windowsのみ |
 | tmux | `sudo apt install tmux` | ターミナルマルチプレクサ |
-| Node.js v20+ | `nvm install 20` | Claude Code CLIに必要 |
+| Node.js v20+ | `nvm install 20` | CLIツールに必要 |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | Anthropic公式CLI |
+| Gemini CLI | `npm install -g @google/gemini-cli` | Google公式CLI（選択時） |
 
 </details>
 

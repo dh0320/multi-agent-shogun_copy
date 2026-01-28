@@ -2,12 +2,13 @@
 
 <div align="center">
 
-**Multi-Agent Orchestration System for Claude Code**
+**Multi-Agent Orchestration System for Claude Code / Gemini CLI**
 
 *One command. Eight AI agents working in parallel.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
+[![Gemini CLI](https://img.shields.io/badge/Gemini-CLI-blue)](https://gemini.google.com/)
 [![tmux](https://img.shields.io/badge/tmux-required-green)](https://github.com/tmux/tmux)
 
 [English](README.md) | [Japanese / 日本語](README_ja.md)
@@ -18,7 +19,7 @@
 
 ## What is this?
 
-**multi-agent-shogun** is a system that runs multiple Claude Code instances simultaneously, organized like a feudal Japanese army.
+**multi-agent-shogun** is a system that runs multiple AI agents (Claude Code or Gemini CLI) simultaneously, organized like a feudal Japanese army.
 
 **Why use this?**
 - Give one command, get 8 AI workers executing in parallel
@@ -176,7 +177,7 @@ Then restart your computer and run `install.bat` again.
 
 ### What `shutsujin_departure.sh` does:
 - ✅ Creates tmux sessions (shogun + multiagent)
-- ✅ Launches Claude Code on all 10 agents
+- ✅ Launches AI tools (Claude/Gemini) on all 10 agents
 - ✅ Automatically loads instruction files for each agent
 - ✅ Resets queue files for a fresh start
 
@@ -195,8 +196,9 @@ If you prefer to install dependencies manually:
 |-------------|----------------|-------|
 | WSL2 + Ubuntu | `wsl --install` in PowerShell | Windows only |
 | tmux | `sudo apt install tmux` | Terminal multiplexer |
-| Node.js v20+ | `nvm install 20` | Required for Claude Code CLI |
+| Node.js v20+ | `nvm install 20` | Required for CLI tools |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | Anthropic's official CLI |
+| Gemini CLI | `npm install -g @google/gemini-cli` | Google's official CLI (if selected) |
 
 </details>
 
