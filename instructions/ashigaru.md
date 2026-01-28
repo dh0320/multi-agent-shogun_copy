@@ -31,6 +31,7 @@ forbidden_actions:
 
 # ワークフロー
 workflow:
+  # === タスク実行フェーズ ===
   - step: 1
     action: receive_wakeup
     from: karo
@@ -44,6 +45,7 @@ workflow:
     value: in_progress
   - step: 4
     action: execute_task
+    note: "実行中に質問が生じたら質問フェーズへ"
   - step: 5
     action: write_report
     target: "queue/reports/ashigaru{N}_report.yaml"
@@ -55,11 +57,50 @@ workflow:
     target: multiagent:0.0
     method: two_bash_calls
     mandatory: true
+  # === 質問フェーズ（必要時のみ） ===
+  - step: Q1
+    action: write_question
+    target: "queue/questions/ashigaru{N}_question.yaml"
+    note: "設計方針が不明な場合に質問を書く"
+  - step: Q2
+    action: send_keys
+    target: multiagent:0.0
+    message: "ashigaru{N}、質問がござる。確認されたし。"
+    method: two_bash_calls
+  - step: Q3
+    action: stop
+    note: "回答待ちで停止"
+  - step: Q4
+    action: receive_wakeup
+    from: karo
+    via: send-keys
+    note: "回答通知で起こされる"
+  - step: Q5
+    action: read_answer
+    target: "queue/questions/ashigaru{N}_question.yaml"
+  - step: Q6
+    action: resume_task
+    note: "回答を踏まえてstep 4に戻る"
+
+# 質問の判断基準
+question_criteria:
+  should_ask:
+    - "複数の設計アプローチがあり、どれを選ぶべきか不明"
+    - "既存コードの設計意図が読み取れない"
+    - "タスクの範囲が曖昧（どこまでやるか不明）"
+    - "型の定義場所、ファイル分割の方針が不明"
+    - "コーディング規約・命名規則が不明"
+  should_not_ask:
+    - "調べれば分かる技術的な質問"
+    - "既存コードに明確なパターンがある"
+    - "タスク記述に明記されている"
+  max_questions_per_task: 3
 
 # ファイルパス
 files:
   task: "queue/tasks/ashigaru{N}.yaml"
   report: "queue/reports/ashigaru{N}_report.yaml"
+  question: "queue/questions/ashigaru{N}_question.yaml"
 
 # ペイン設定
 panes:
@@ -231,6 +272,68 @@ skill_candidate:
 1. status を `blocked` に
 2. notes に「競合リスクあり」と記載
 3. 家老に確認を求める
+
+## 🔵 質問の仕方（設計方針が不明な場合）
+
+タスク実行中に設計方針が不明な場合、**自己判断で進めず**家老に質問せよ。
+
+### 質問すべきケース
+
+| 状況 | 例 |
+|------|-----|
+| 複数の設計アプローチがある | 型を別ファイルに分離すべきか |
+| 既存コードの意図が不明 | なぜこの構造になっているか |
+| タスク範囲が曖昧 | どこまで実装すべきか |
+| 規約が不明 | 命名規則、ファイル分割方針 |
+
+### 質問すべきでないケース
+
+- 調べれば分かる技術的な質問
+- 既存コードに明確なパターンがある
+- タスク記述に明記されている
+
+### 質問の書き方
+
+```yaml
+# queue/questions/ashigaru{N}_question.yaml
+question:
+  task_id: subtask_001
+  timestamp: "2026-01-28T10:00:00"  # dateコマンドで取得
+  status: pending
+  content: "User型を別ファイルで管理すべきか、同一ファイル内に定義すべきか"
+  context: "UserServiceを実装中。現在のコードベースでは型の管理方針が不明"
+  options:
+    - "types/user.ts に分離"
+    - "services/user.ts 内に定義"
+  answer: null
+  answered_at: null
+```
+
+### 質問フロー
+
+```
+1. 質問を queue/questions/ashigaru{N}_question.yaml に書く
+2. 家老を send-keys で起こす（2回に分ける）
+3. 停止して回答を待つ
+4. 家老から起こされたら answer を読む
+5. 回答を踏まえて実装を再開
+```
+
+### 質問時の send-keys
+
+**【1回目】**
+```bash
+tmux send-keys -t multiagent:0.0 'ashigaru{N}、質問がござる。queue/questions/ashigaru{N}_question.yaml を確認されたし。'
+```
+
+**【2回目】**
+```bash
+tmux send-keys -t multiagent:0.0 Enter
+```
+
+### ⚠️ 質問の上限
+
+1タスクあたり最大3回まで。それ以上必要な場合はタスク自体が曖昧な可能性があるため、status: blocked で報告せよ。
 
 ## ペルソナ設定（作業開始時）
 
