@@ -211,9 +211,11 @@ tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣�
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 2: 報告ファイルリセット
+# STEP 2: 報告ファイル・質問ファイルリセット
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "📜 前回の軍議記録を破棄中..."
+
+# 報告ファイルリセット
 for i in {1..8}; do
     cat > ./queue/reports/ashigaru${i}_report.yaml << EOF
 worker_id: ashigaru${i}
@@ -221,6 +223,23 @@ task_id: null
 timestamp: ""
 status: idle
 result: null
+EOF
+done
+
+# 質問ファイルリセット
+mkdir -p ./queue/questions
+for i in {1..8}; do
+    cat > ./queue/questions/ashigaru${i}_question.yaml << EOF
+# 足軽${i}専用質問ファイル
+question:
+  task_id: null          # 関連するタスクID
+  timestamp: null        # 質問日時
+  status: idle           # idle | pending | answered
+  content: null          # 質問内容
+  context: null          # 背景・状況説明
+  options: []            # 考えている選択肢（あれば）
+  answer: null           # 家老からの回答
+  answered_at: null      # 回答日時
 EOF
 done
 

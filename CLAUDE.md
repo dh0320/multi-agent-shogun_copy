@@ -1,7 +1,7 @@
 # multi-agent-shogun システム構成
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-01-27
+> **Version**: 1.1.0
+> **Last Updated**: 2026-01-28
 
 ## 概要
 multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェント並列開発基盤である。
@@ -62,11 +62,24 @@ status/master_status.yaml         # 全体進捗
 queue/shogun_to_karo.yaml         # Shogun → Karo 指示
 queue/tasks/ashigaru{N}.yaml      # Karo → Ashigaru 割当（各足軽専用）
 queue/reports/ashigaru{N}_report.yaml  # Ashigaru → Karo 報告
+queue/questions/ashigaru{N}_question.yaml  # Ashigaru ↔ Karo 質問（各足軽専用）
 dashboard.md                      # 人間用ダッシュボード
 ```
 
-**注意**: 各足軽には専用のタスクファイル（queue/tasks/ashigaru1.yaml 等）がある。
-これにより、足軽が他の足軽のタスクを誤って実行することを防ぐ。
+**注意**: 各足軽には専用のタスクファイル（queue/tasks/ashigaru1.yaml 等）と
+質問ファイル（queue/questions/ashigaru1_question.yaml 等）がある。
+これにより、足軽が他の足軽のタスク・質問を誤って処理することを防ぐ。
+
+### 質問フロー（足軽 ↔ 家老）
+```
+足軽: 設計方針が不明
+  ↓ queue/questions/ashigaru{N}_question.yaml に質問を書く
+  ↓ send-keys で家老を起こす
+家老: 質問を読む
+  ├─ 回答可能 → answer欄に書く → send-keysで足軽を起こす
+  └─ 回答不可 → dashboard「伺い事項」に転記 → 将軍からの回答待ち
+足軽: answer を読んで実装再開
+```
 
 ## tmuxセッション構成
 
