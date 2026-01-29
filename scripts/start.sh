@@ -42,26 +42,24 @@ show_banner() {
     echo -e "\033[1;34m  ╚═══════════════════════════════════════════════════════╝\033[0m"
     echo ""
 
-    # 家臣隊列
-    local flags=""
-    local poles=""
-    local bases=""
-    local feet=""
-    local labels=""
+    # 家臣隊列（武士アスキーアート）
+    local line1="" line2="" line3="" line4="" line5="" line6=""
     for i in $(seq 1 $KASHIN_COUNT); do
-        flags="$flags  /\\  "
-        poles="$poles /||\\  "
-        bases="$bases/_||\\  "
-        feet="$feet  /  \\  "
-        labels="$labels [臣$i] "
+        line1="$line1  ▲   "
+        line2="$line2 ╱▏╲  "
+        line3="$line3 ┃⚔┃  "
+        line4="$line4 ╱ ╲  "
+        line5="$line5╱   ╲ "
+        line6="$line6[臣$i] "
     done
-    echo "    $flags"
-    echo "    $poles"
-    echo "    $bases"
-    echo "    $feet"
-    echo "    $labels"
+    echo -e "    \033[1;33m$line1\033[0m"
+    echo -e "    \033[1;37m$line2\033[0m"
+    echo -e "    \033[1;37m$line3\033[0m"
+    echo -e "    \033[1;34m$line4\033[0m"
+    echo -e "    \033[1;34m$line5\033[0m"
+    echo -e "    \033[1;36m$line6\033[0m"
     echo ""
-    echo -e "              \033[1;36m「「「 はっ！！ 出陣いたす！！ 」」」\033[0m"
+    echo -e "         \033[1;36m「「「 はっ！！ 出陣いたす！！ 」」」\033[0m"
     echo ""
 }
 
