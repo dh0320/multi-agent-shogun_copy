@@ -302,3 +302,40 @@ echo "  │  参謀・家臣の陣を確認する:                              
 echo "  │     uesama-agents   (または: tmux attach -t kashindan)   │"
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
+
+# ═══════════════════════════════════════════════
+# STEP 9: ターミナルウィンドウ自動起動（macOS）
+# ═══════════════════════════════════════════════
+if [ "$(uname)" = "Darwin" ]; then
+    log_info "ターミナルウィンドウを起動中..."
+
+    open_terminal_with_command() {
+        local cmd="$1"
+        local title="$2"
+        if [ -d "/Applications/iTerm.app" ]; then
+            osascript -e "
+                tell application \"iTerm\"
+                    activate
+                    set newWindow to (create window with default profile)
+                    tell current session of newWindow
+                        write text \"$cmd\"
+                    end tell
+                end tell
+            " 2>/dev/null
+        else
+            osascript -e "
+                tell application \"Terminal\"
+                    activate
+                    do script \"$cmd\"
+                end tell
+            " 2>/dev/null
+        fi
+    }
+
+    open_terminal_with_command "tmux attach -t daimyo" "daimyo"
+    sleep 0.5
+    open_terminal_with_command "tmux attach -t kashindan" "kashindan"
+
+    log_success "  └─ ターミナルウィンドウ起動完了"
+    echo ""
+fi

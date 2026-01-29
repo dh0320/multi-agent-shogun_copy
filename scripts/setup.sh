@@ -15,14 +15,35 @@ echo "  ║  🏯 uesama 依存チェック                       ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo ""
 
-# tmux チェック
+# tmux チェック & 自動インストール
 if command -v tmux &> /dev/null; then
     TMUX_VERSION=$(tmux -V | awk '{print $2}')
     echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION)"
 else
-    echo -e "  ${RED}✗${NC} tmux が見つかりません"
-    echo "    インストール: brew install tmux (macOS) / sudo apt install tmux (Ubuntu)"
-    HAS_ERROR=true
+    echo -e "  ${YELLOW}!${NC} tmux が見つかりません。自動インストールを試みます..."
+    if [ "$(uname)" = "Darwin" ] && command -v brew &> /dev/null; then
+        brew install tmux
+        if command -v tmux &> /dev/null; then
+            TMUX_VERSION=$(tmux -V | awk '{print $2}')
+            echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION) をインストールしました"
+        else
+            echo -e "  ${RED}✗${NC} tmux のインストールに失敗しました"
+            HAS_ERROR=true
+        fi
+    elif command -v apt-get &> /dev/null; then
+        sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+        if command -v tmux &> /dev/null; then
+            TMUX_VERSION=$(tmux -V | awk '{print $2}')
+            echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION) をインストールしました"
+        else
+            echo -e "  ${RED}✗${NC} tmux のインストールに失敗しました"
+            HAS_ERROR=true
+        fi
+    else
+        echo -e "  ${RED}✗${NC} tmux を自動インストールできません"
+        echo "    手動でインストールしてください: brew install tmux (macOS) / sudo apt install tmux (Ubuntu)"
+        HAS_ERROR=true
+    fi
 fi
 
 # Claude Code CLI チェック
