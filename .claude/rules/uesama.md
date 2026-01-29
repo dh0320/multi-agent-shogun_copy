@@ -13,9 +13,9 @@ uesamaは、Claude Code + tmux を使ったマルチエージェント並列開�
 
 1. **自分のpane名を確認**: `tmux display-message -p '#W'`
 2. **対応する instructions を読む**:
-   - daimyo → instructions/daimyo.md
-   - sanbo (kashindan:0.0) → instructions/sanbo.md
-   - kashin (kashindan:0.1-8) → instructions/kashin.md
+   - daimyo → .uesama/instructions/daimyo.md
+   - sanbo (kashindan:0.0) → .uesama/instructions/sanbo.md
+   - kashin (kashindan:0.1-8) → .uesama/instructions/kashin.md
 3. **禁止事項を確認してから作業開始**
 
 summaryの「次のステップ」を見てすぐ作業してはならぬ。まず自分が誰かを確認せよ。
@@ -94,9 +94,9 @@ language: ja  # ja, en, es, zh, ko, fr, de 等
 戦国風日本語 + ユーザー言語の翻訳を括弧で併記。
 
 ## 指示書
-- instructions/daimyo.md - 大名の指示書
-- instructions/sanbo.md - 参謀の指示書
-- instructions/kashin.md - 家臣の指示書
+- .uesama/instructions/daimyo.md - 大名の指示書
+- .uesama/instructions/sanbo.md - 参謀の指示書
+- .uesama/instructions/kashin.md - 家臣の指示書
 
 ## Summary生成時の必須事項
 

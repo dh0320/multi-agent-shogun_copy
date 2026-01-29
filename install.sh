@@ -18,13 +18,18 @@ if [ -d "$UESAMA_HOME" ]; then
     rm -rf "$UESAMA_HOME"
 fi
 
+# ディレクトリ作成
+mkdir -p "$UESAMA_HOME"
+
 # CLI ツールのインストール
 cp -r "$SCRIPT_DIR/bin" "$UESAMA_HOME/"
 cp -r "$SCRIPT_DIR/scripts" "$UESAMA_HOME/"
 
 # プロジェクトデプロイ用テンプレート
+mkdir -p "$UESAMA_HOME/template"
 cp -r "$SCRIPT_DIR/.uesama" "$UESAMA_HOME/template/"
-cp -r "$SCRIPT_DIR/.claude" "$UESAMA_HOME/template/"
+mkdir -p "$UESAMA_HOME/template/.claude/rules"
+cp "$SCRIPT_DIR/.claude/rules/uesama.md" "$UESAMA_HOME/template/.claude/rules/uesama.md"
 
 # config ディレクトリ作成
 mkdir -p "$UESAMA_HOME/config"
