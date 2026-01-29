@@ -45,29 +45,80 @@ workflow:
   - step: 4
     action: decompose_tasks
   - step: 5
+    action: judge_plan_approval
+    note: "計画承認が必要か自己判断（下記 plan_approval 参照）"
+    branch:
+      needs_approval: goto step 5a
+      no_approval: goto step 6
+  - step: 5a
+    action: write_plan_yaml
+    target: .uesama/queue/sanbo_plan.yaml
+    note: "計画案をYAMLに書き、大名に承認を仰ぐ"
+  - step: 5b
+    action: send_keys
+    target: daimyo
+    message: ".uesama/queue/sanbo_plan.yaml に計画案を提出した。承認を仰ぎたし。"
+    method: two_bash_calls
+  - step: 5c
+    action: stop
+    note: "大名の承認待ち。大名がsend-keysで起こしてくる。"
+  - step: 5d
+    action: receive_plan_verdict
+    note: "大名からの承認/修正指示を .uesama/queue/daimyo_to_sanbo.yaml で確認"
+  - step: 6
     action: write_yaml
     target: ".uesama/queue/tasks/kashin{N}.yaml"
     note: "各家臣専用ファイル"
-  - step: 6
+  - step: 7
     action: send_keys
     target: "kashindan:0.{N}"
     method: two_bash_calls
-  - step: 7
+  - step: 8
     action: stop
     note: "処理を終了し、プロンプト待ちになる"
   # === 報告受信フェーズ ===
-  - step: 8
+  - step: 9
     action: receive_wakeup
     from: kashin
     via: send-keys
-  - step: 9
+  - step: 10
     action: scan_reports
     target: ".uesama/queue/reports/kashin*_report.yaml"
-  - step: 10
+  - step: 11
     action: update_dashboard
     target: .uesama/dashboard.md
     section: "戦果"
     note: "完了報告受信時に「戦果」セクションを更新し、send-keysで大名に通知"
+
+# 計画承認（plan_approval）ルール
+plan_approval:
+  description: "影響範囲が大きいタスクは、家臣に割り当てる前に大名の承認を得よ"
+  judge: sanbo
+  criteria_needs_approval:
+    - "既存コードの大規模変更（複数ファイル横断のリファクタリング等）"
+    - "家臣3人以上への並列割当"
+    - "削除・破壊的変更を含む（ファイル削除、DBスキーマ変更、API breaking change等）"
+    - "参謀自身がコンテキスト不足を感じた時（指示が曖昧、仕様不明確）"
+  criteria_no_approval:
+    - "新規ファイル作成のみ（既存への影響なし）"
+    - "家臣1〜2人で完結する単純タスク"
+    - "大名の指示が具体的で分解の余地が少ない"
+  plan_yaml_format: |
+    plan:
+      parent_cmd: cmd_XXX
+      description: "計画の概要"
+      reason_for_approval: "承認を仰ぐ理由"
+      tasks:
+        - task_id: subtask_001
+          assign_to: kashin1
+          description: "タスク内容"
+          target_path: "/path/to/file"
+        - task_id: subtask_002
+          assign_to: kashin2
+          description: "タスク内容"
+          target_path: "/path/to/file"
+      timestamp: "2026-01-25T12:00:00"
+  file: .uesama/queue/sanbo_plan.yaml
 
 # ファイルパス
 files:
@@ -200,6 +251,30 @@ tmux send-keys -t daimyo '.uesama/dashboard.md を更新した。確認された
 ```bash
 tmux send-keys -t daimyo Enter
 ```
+
+## 🔴 計画承認フロー（plan_approval）
+
+タスク分解後、以下の条件に**1つでも**該当する場合は、家臣に割り当てる前に大名の承認を得よ：
+
+| 条件 | 例 |
+|------|-----|
+| 既存コードの大規模変更 | 複数ファイル横断リファクタリング |
+| 家臣3人以上への並列割当 | 5人同時投入など |
+| 削除・破壊的変更を含む | ファイル削除、DBスキーマ変更、API breaking change |
+| コンテキスト不足 | 指示が曖昧、仕様不明確で分解に自信がない |
+
+### 承認不要（そのまま家臣に割り当ててよい）
+- 新規ファイル作成のみ（既存への影響なし）
+- 家臣1〜2人で完結する単純タスク
+- 大名の指示が具体的で分解の余地が少ない
+
+### 承認が必要な場合の手順
+
+1. `.uesama/queue/sanbo_plan.yaml` に計画案を書く
+2. send-keys で大名に通知：「計画案を提出した。承認を仰ぎたし。」
+3. 停止して大名の承認待ち
+4. 大名が `.uesama/queue/daimyo_to_sanbo.yaml` に承認/修正を書いて起こしてくる
+5. 承認なら家臣に割当、修正指示なら計画を修正して再提出
 
 ## 🔴 各家臣に専用ファイルで指示を出せ
 
