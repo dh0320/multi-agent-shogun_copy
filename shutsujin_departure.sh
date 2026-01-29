@@ -173,6 +173,7 @@ tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤
 # STEP 2: 報告ファイルリセット
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "📜 前回の軍議記録を破棄中..."
+mkdir -p ./queue/reports ./queue/tasks
 for i in {1..8}; do
     cat > ./queue/reports/ashigaru${i}_report.yaml << EOF
 worker_id: ashigaru${i}
