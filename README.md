@@ -101,8 +101,11 @@ Open **Ubuntu terminal** (WSL) and run:
 
 ```bash
 cd /mnt/c/tools/multi-agent-shogun
-./shutsujin_departure.sh
+./start.sh          # Recommended: unified entry point
+# or: ./shutsujin_departure.sh  # Traditional script
 ```
+
+Or if you set up aliases, just run: `css`
 
 #### 🔐 First-Time Authentication (One Time Only)
 
@@ -125,10 +128,11 @@ cd /mnt/c/tools/multi-agent-shogun
 git clone https://github.com/yohey-w/multi-agent-shogun.git ~/multi-agent-shogun
 cd ~/multi-agent-shogun
 
-# 2. Make scripts executable
-chmod +x *.sh
+# 2. Run the unified installer (recommended)
+./install.sh
 
-# 3. Run first-time setup
+# Or manually:
+chmod +x *.sh
 ./first_setup.sh
 ```
 
@@ -136,7 +140,69 @@ chmod +x *.sh
 
 ```bash
 cd ~/multi-agent-shogun
+
+# Recommended: Use the unified entry point
+./start.sh
+
+# Or traditional script:
 ./shutsujin_departure.sh
+```
+
+</details>
+
+---
+
+<details>
+<summary>🌍 <b>Cross-Platform Support</b> (Click to expand)</summary>
+
+### Supported Platforms
+
+multi-agent-shogun supports the following operating systems:
+- **macOS** (Darwin) - Terminal.app, iTerm2
+- **Linux** (Ubuntu, Fedora, Arch, etc.) - gnome-terminal, konsole, xterm
+- **WSL2** (Windows Subsystem for Linux) - Windows Terminal
+- **Windows** (Git Bash/MSYS2)
+
+### Unified Commands
+
+```bash
+# Installation (all platforms)
+./install.sh              # Full installation
+./install.sh --check      # Check prerequisites only
+./install.sh --deps-only  # Install dependencies only
+
+# Startup (all platforms)
+./start.sh                # Start all agents
+./start.sh -s             # Setup only (no Claude launch)
+./start.sh -t             # Open terminal tabs
+
+# Using Makefile
+make install              # Full installation
+make start                # Start all agents
+make stop                 # Stop all sessions
+make check                # Check prerequisites
+```
+
+### Environment Variables
+
+Customize behavior with environment variables:
+- `SHOGUN_HOME`: Home directory (auto-detected)
+- `SHOGUN_LANG`: Language setting (ja, en, etc.)
+- `SHOGUN_SCREENSHOT_DIR`: Screenshot save location
+
+### Abstraction Layer
+
+The system uses a three-layer architecture for cross-platform compatibility:
+
+```
+lib/
+├── detect_os.sh        # OS detection and environment setup
+├── utils.sh            # Common utility functions
+└── generate_config.sh  # Template-based config generation
+
+config/
+├── settings.yaml.template  # Template with environment variables
+└── settings.yaml           # Generated config (gitignored)
 ```
 
 </details>
@@ -173,9 +239,25 @@ Then restart your computer and run `install.bat` again.
 
 | Script | Purpose | When to Run |
 |--------|---------|-------------|
+| `install.sh` | **Recommended**: Cross-platform installer | First time only |
+| `start.sh` | **Recommended**: Unified entry point for all platforms | Every day |
 | `install.bat` | Windows: First-time setup (runs first_setup.sh via WSL) | First time only |
 | `first_setup.sh` | Installs tmux, Node.js, Claude Code CLI | First time only |
 | `shutsujin_departure.sh` | Creates tmux sessions + starts Claude Code + loads instructions | Every day |
+| `Makefile` | Unified interface: `make install`, `make start`, `make stop` | Anytime |
+
+### What `install.sh` does (Cross-platform):
+- ✅ Detects OS (macOS, Linux, WSL2, Windows)
+- ✅ Installs dependencies (tmux, Node.js, Claude Code CLI)
+- ✅ Generates configuration from templates
+- ✅ Creates necessary directories and queue files
+- ✅ Sets up shell aliases
+
+### What `start.sh` does:
+- ✅ Sources OS abstraction layer
+- ✅ Checks prerequisites
+- ✅ Generates settings.yaml if needed
+- ✅ Delegates to shutsujin_departure.sh
 
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed
@@ -619,10 +701,18 @@ tmux kill-session -t multiagent
 multi-agent-shogun/
 │
 │  ┌─────────────────── SETUP SCRIPTS ───────────────────┐
+├── start.sh                  # Unified entry point (recommended)
+├── install.sh                # Cross-platform installer (recommended)
+├── Makefile                  # Unified interface (make start/stop/install)
 ├── install.bat               # Windows: First-time setup
-├── first_setup.sh            # Ubuntu/Mac: First-time setup
+├── first_setup.sh            # Ubuntu/Mac: First-time setup (legacy)
 ├── shutsujin_departure.sh    # Daily startup (auto-loads instructions)
 │  └────────────────────────────────────────────────────┘
+│
+├── lib/                      # Cross-platform abstraction layer
+│   ├── detect_os.sh          # OS detection and environment setup
+│   ├── utils.sh              # Common utility functions
+│   └── generate_config.sh    # Template-based config generation
 │
 ├── instructions/             # Agent instruction files
 │   ├── shogun.md             # Commander instructions
@@ -630,7 +720,9 @@ multi-agent-shogun/
 │   └── ashigaru.md           # Worker instructions
 │
 ├── config/
-│   └── settings.yaml         # Language and other settings
+│   ├── settings.yaml.template  # Config template with env vars
+│   ├── settings.yaml           # Generated config (gitignored)
+│   └── projects.yaml           # Project configuration
 │
 ├── queue/                    # Communication files
 │   ├── shogun_to_karo.yaml   # Commands from Shogun to Karo
