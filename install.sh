@@ -1,10 +1,34 @@
-#!/bin/bash
-# uesama インストールスクリプト
-# ~/.uesama/ にファイルをコピーし、PATH に追加する
+#!/bin/sh
+# uesama インストーラー
+# curl -fsSL https://raw.githubusercontent.com/y-nishizaki/multi-agent-shogun/main/install.sh | sh
 set -e
 
+REPO_URL="https://github.com/y-nishizaki/multi-agent-shogun"
 UESAMA_HOME="$HOME/.uesama"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ソースディレクトリの決定（ローカル or リモート取得）
+if [ -d "$(dirname "$0")/bin" ] && [ -d "$(dirname "$0")/.uesama" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    CLEANUP=""
+else
+    TMPDIR=$(mktemp -d)
+    CLEANUP="$TMPDIR"
+    echo ""
+    echo "  ソースを取得中..."
+    if command -v git >/dev/null 2>&1; then
+        git clone --depth 1 "$REPO_URL.git" "$TMPDIR/uesama" >/dev/null 2>&1
+        SCRIPT_DIR="$TMPDIR/uesama"
+    else
+        curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" -o "$TMPDIR/uesama.tar.gz"
+        tar xzf "$TMPDIR/uesama.tar.gz" -C "$TMPDIR"
+        SCRIPT_DIR="$TMPDIR/multi-agent-shogun-main"
+    fi
+fi
+
+cleanup() {
+    [ -n "$CLEANUP" ] && rm -rf "$CLEANUP" || true
+}
+trap cleanup EXIT
 
 echo ""
 echo "  ╔══════════════════════════════════════════════╗"

@@ -1,0 +1,14 @@
+#!/bin/bash
+# uesama-stop - 全セッション停止コマンド
+set -e
+
+echo ""
+echo "  🏯 uesama 撤収中..."
+echo ""
+
+tmux kill-session -t daimyo 2>/dev/null && echo "  ✓ daimyo セッション停止" || echo "  - daimyo セッションなし"
+tmux kill-session -t kashindan 2>/dev/null && echo "  ✓ kashindan セッション停止" || echo "  - kashindan セッションなし"
+
+echo ""
+echo "  ✅ 全軍撤収完了"
+echo ""

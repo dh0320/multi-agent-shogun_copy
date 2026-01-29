@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Added
+- `install.sh` を統合: curl ワンライナーとローカル実行の両方に対応
+- README.md のインストール手順を curl ワンライナーに一本化
+
 ## [2.0.1] - 2026-01-29
 
 ### Added
