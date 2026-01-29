@@ -64,6 +64,12 @@ kashin_count: 8
 EOF
 fi
 
+# pre-commit フックのインストール
+if [ -d "$SCRIPT_DIR/.githooks" ]; then
+    cp -r "$SCRIPT_DIR/.githooks" "$UESAMA_HOME/"
+    chmod +x "$UESAMA_HOME/.githooks/"*
+fi
+
 # 実行権限付与
 chmod +x "$UESAMA_HOME/bin/"*
 chmod +x "$UESAMA_HOME/scripts/"*

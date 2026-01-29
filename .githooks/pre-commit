@@ -1,0 +1,51 @@
+#!/bin/bash
+# uesama pre-commit hook
+# コミット対象のシェルスクリプトに対して ShellCheck と構文チェックを実行する
+#
+# セットアップ:
+#   git config core.hooksPath .githooks
+# または:
+#   ./install.sh 実行時に自動設定される
+
+set -e
+
+# コミット対象のシェルスクリプトを取得
+STAGED_SCRIPTS=$(git diff --cached --name-only --diff-filter=ACM | \
+    grep -E '\.(sh)$|^bin/uesama' || true)
+
+if [ -z "$STAGED_SCRIPTS" ]; then
+    exit 0
+fi
+
+HAS_ERROR=false
+
+# ShellCheck（インストール済みの場合のみ）
+if command -v shellcheck > /dev/null 2>&1; then
+    echo "pre-commit: ShellCheck..."
+    for f in $STAGED_SCRIPTS; do
+        if ! shellcheck --severity=warning "$f"; then
+            HAS_ERROR=true
+        fi
+    done
+else
+    echo "pre-commit: ShellCheck がインストールされていません（スキップ）"
+    echo "  インストール: brew install shellcheck / sudo apt install shellcheck"
+fi
+
+# bash -n 構文チェック
+echo "pre-commit: syntax check..."
+for f in $STAGED_SCRIPTS; do
+    if ! bash -n "$f"; then
+        echo "  ✗ $f に構文エラーがあります"
+        HAS_ERROR=true
+    fi
+done
+
+if [ "$HAS_ERROR" = true ]; then
+    echo ""
+    echo "pre-commit: エラーが見つかりました。修正してからコミットしてください。"
+    echo "  スキップする場合: git commit --no-verify"
+    exit 1
+fi
+
+echo "pre-commit: ✅ OK"
