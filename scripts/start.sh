@@ -153,6 +153,11 @@ EOF
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
 sed "s/{{TIMESTAMP}}/$TIMESTAMP/" "$UESAMA_HOME/templates/dashboard.md" > "$PROJ_UESAMA/dashboard.md"
 
+# context.md（なければテンプレートからコピー）
+if [ ! -f "$PROJ_UESAMA/context.md" ]; then
+    cp "$UESAMA_HOME/templates/context.md" "$PROJ_UESAMA/context.md"
+fi
+
 # config/settings.yaml（なければ作成）
 if [ ! -f "$PROJ_UESAMA/config/settings.yaml" ]; then
     cat > "$PROJ_UESAMA/config/settings.yaml" << EOF
