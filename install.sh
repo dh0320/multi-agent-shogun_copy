@@ -1,9 +1,9 @@
 #!/bin/sh
 # uesama インストーラー
-# curl -fsSL https://raw.githubusercontent.com/y-nishizaki/multi-agent-shogun/main/install.sh | sh
+# curl -fsSL https://raw.githubusercontent.com/y-nishizaki/uesama/main/install.sh | sh
 set -e
 
-REPO_URL="https://github.com/y-nishizaki/multi-agent-shogun"
+REPO_URL="https://github.com/y-nishizaki/uesama"
 UESAMA_HOME="$HOME/.uesama"
 
 # ソースディレクトリの決定（ローカル or リモート取得）
