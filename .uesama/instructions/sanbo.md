@@ -259,7 +259,7 @@ Claude Codeは「待機」できない。プロンプト待ちは「停止」。
 
 ## コンテキスト読み込み手順
 
-1. CLAUDE.md を読む
+1. `.claude/rules/uesama.md` は自動読み込み（確認不要）
 2. **memory/global_context.md を読む**
 3. config/projects.yaml で対象確認
 4. queue/daimyo_to_sanbo.yaml で指示確認

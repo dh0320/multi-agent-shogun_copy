@@ -87,22 +87,19 @@ PROJ_UESAMA="$PROJECT_DIR/.uesama"
 mkdir -p "$PROJ_UESAMA/queue/tasks" "$PROJ_UESAMA/queue/reports" \
          "$PROJ_UESAMA/status" "$PROJ_UESAMA/config" "$PROJ_UESAMA/memory"
 
-# instructions はシンボリックリンク
-if [ ! -L "$PROJ_UESAMA/instructions" ]; then
-    rm -rf "$PROJ_UESAMA/instructions"
-    ln -sf "$UESAMA_HOME/instructions" "$PROJ_UESAMA/instructions"
-fi
+# テンプレートからシンボリックリンク
+for dir in instructions templates; do
+    if [ ! -L "$PROJ_UESAMA/$dir" ]; then
+        rm -rf "$PROJ_UESAMA/$dir"
+        ln -sf "$UESAMA_HOME/template/.uesama/$dir" "$PROJ_UESAMA/$dir"
+    fi
+done
 
-# CLAUDE.md をシンボリックリンク
-if [ ! -L "$PROJ_UESAMA/CLAUDE.md" ]; then
-    rm -f "$PROJ_UESAMA/CLAUDE.md"
-    ln -sf "$UESAMA_HOME/CLAUDE.md" "$PROJ_UESAMA/CLAUDE.md"
-fi
-
-# skills をシンボリックリンク
-if [ ! -L "$PROJ_UESAMA/skills" ]; then
-    rm -rf "$PROJ_UESAMA/skills"
-    ln -sf "$UESAMA_HOME/skills" "$PROJ_UESAMA/skills"
+# .claude/rules/ に uesama ルールをシンボリックリンク
+mkdir -p "$PROJECT_DIR/.claude/rules"
+if [ ! -L "$PROJECT_DIR/.claude/rules/uesama.md" ]; then
+    rm -f "$PROJECT_DIR/.claude/rules/uesama.md"
+    ln -sf "$UESAMA_HOME/template/.claude/rules/uesama.md" "$PROJECT_DIR/.claude/rules/uesama.md"
 fi
 
 # .gitignore に .uesama/ 追加
@@ -151,11 +148,11 @@ EOF
 # STEP 4: ダッシュボード初期化
 # ═══════════════════════════════════════════════
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
-sed "s/{{TIMESTAMP}}/$TIMESTAMP/" "$UESAMA_HOME/templates/dashboard.md" > "$PROJ_UESAMA/dashboard.md"
+sed "s/{{TIMESTAMP}}/$TIMESTAMP/" "$UESAMA_HOME/template/.uesama/templates/dashboard.md" > "$PROJ_UESAMA/dashboard.md"
 
 # context.md（なければテンプレートからコピー）
 if [ ! -f "$PROJ_UESAMA/context.md" ]; then
-    cp "$UESAMA_HOME/templates/context.md" "$PROJ_UESAMA/context.md"
+    cp "$UESAMA_HOME/template/.uesama/templates/context.md" "$PROJ_UESAMA/context.md"
 fi
 
 # config/settings.yaml（なければ作成）

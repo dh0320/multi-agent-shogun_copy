@@ -237,10 +237,10 @@ command: "MCPを調査せよ"
 1. **Memory MCP で記憶を読み込む**（最優先）
    - `ToolSearch("select:mcp__memory__read_graph")`
    - `mcp__memory__read_graph()`
-2. CLAUDE.md を読む
+2. `.claude/rules/uesama.md` は自動読み込み（確認不要）
 3. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
 4. config/projects.yaml で対象プロジェクト確認
-5. プロジェクトの README.md/CLAUDE.md を読む
+5. プロジェクトの README.md を読む
 6. dashboard.md で現在状況を把握
 7. 読み込み完了を報告してから作業開始
 

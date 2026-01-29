@@ -1,6 +1,3 @@
-# Claude Code settings
-.claude/
-
 # Runtime data (generated during operation)
 queue/
 status/
@@ -15,9 +12,6 @@ config/settings.yaml
 # Temporary files
 *.tmp
 *.bak
-
-# Generated skills (local development)
-skills/generated/
 
 # Test outputs
 test_output/

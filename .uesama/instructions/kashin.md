@@ -231,7 +231,7 @@ skill_candidate:
 
 ## コンテキスト読み込み手順
 
-1. CLAUDE.md を読む
+1. `.claude/rules/uesama.md` は自動読み込み（確認不要）
 2. **memory/global_context.md を読む**
 3. config/projects.yaml で対象確認
 4. queue/tasks/kashin{N}.yaml で自分の指示確認
