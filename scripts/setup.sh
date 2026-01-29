@@ -21,27 +21,48 @@ if command -v tmux &> /dev/null; then
     echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION)"
 else
     echo -e "  ${YELLOW}!${NC} tmux が見つかりません。自動インストールを試みます..."
-    if [ "$(uname)" = "Darwin" ] && command -v brew &> /dev/null; then
-        brew install tmux
-        if command -v tmux &> /dev/null; then
-            TMUX_VERSION=$(tmux -V | awk '{print $2}')
-            echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION) をインストールしました"
+    INSTALL_SUCCESS=false
+    if [ "$(uname)" = "Darwin" ]; then
+        if command -v brew &> /dev/null; then
+            echo "    brew でインストール中..."
+            brew install tmux && INSTALL_SUCCESS=true
+        elif command -v port &> /dev/null; then
+            echo "    MacPorts でインストール中..."
+            sudo port install tmux && INSTALL_SUCCESS=true
         else
-            echo -e "  ${RED}✗${NC} tmux のインストールに失敗しました"
-            HAS_ERROR=true
+            echo -e "  ${YELLOW}!${NC} macOS でパッケージマネージャが見つかりません"
+            echo "    brew または MacPorts をインストールしてから再実行してください"
         fi
     elif command -v apt-get &> /dev/null; then
-        sudo apt-get update -qq && sudo apt-get install -y -qq tmux
-        if command -v tmux &> /dev/null; then
-            TMUX_VERSION=$(tmux -V | awk '{print $2}')
-            echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION) をインストールしました"
-        else
-            echo -e "  ${RED}✗${NC} tmux のインストールに失敗しました"
-            HAS_ERROR=true
-        fi
+        echo "    apt-get でインストール中..."
+        sudo apt-get update -qq && sudo apt-get install -y -qq tmux && INSTALL_SUCCESS=true
+    elif command -v dnf &> /dev/null; then
+        echo "    dnf でインストール中..."
+        sudo dnf install -y tmux && INSTALL_SUCCESS=true
+    elif command -v yum &> /dev/null; then
+        echo "    yum でインストール中..."
+        sudo yum install -y tmux && INSTALL_SUCCESS=true
+    elif command -v pacman &> /dev/null; then
+        echo "    pacman でインストール中..."
+        sudo pacman -S --noconfirm tmux && INSTALL_SUCCESS=true
+    elif command -v apk &> /dev/null; then
+        echo "    apk でインストール中..."
+        sudo apk add tmux && INSTALL_SUCCESS=true
+    elif command -v zypper &> /dev/null; then
+        echo "    zypper でインストール中..."
+        sudo zypper install -y tmux && INSTALL_SUCCESS=true
     else
-        echo -e "  ${RED}✗${NC} tmux を自動インストールできません"
-        echo "    手動でインストールしてください: brew install tmux (macOS) / sudo apt install tmux (Ubuntu)"
+        echo -e "  ${RED}✗${NC} サポートされるパッケージマネージャが見つかりません"
+        echo "    手動でインストールしてください: https://github.com/tmux/tmux/wiki/Installing"
+    fi
+
+    if [ "$INSTALL_SUCCESS" = true ] && command -v tmux &> /dev/null; then
+        TMUX_VERSION=$(tmux -V | awk '{print $2}')
+        echo -e "  ${GREEN}✓${NC} tmux (v$TMUX_VERSION) をインストールしました"
+    elif [ "$INSTALL_SUCCESS" = true ]; then
+        echo -e "  ${RED}✗${NC} tmux のインストールに失敗しました"
+        HAS_ERROR=true
+    else
         HAS_ERROR=true
     fi
 fi
