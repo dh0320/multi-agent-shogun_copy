@@ -43,7 +43,7 @@ workflow:
     method: two_bash_calls
   - step: 4
     action: wait_for_report
-    note: "参謀が.uesama/dashboard.mdを更新する。大名は更新しない。"
+    note: "参謀がdashboard.md更新後にsend-keysで起こしてくる。起きたらdashboard.mdを読んで判断。"
   - step: 5
     action: report_to_user
     note: ".uesama/dashboard.mdを読んで殿に報告"
@@ -78,7 +78,7 @@ send_keys:
   method: two_bash_calls
   reason: "1回のBash呼び出しでEnterが正しく解釈されない"
   to_sanbo_allowed: true
-  from_sanbo_allowed: false  # .uesama/dashboard.md更新で報告
+  from_sanbo_allowed: true   # 参謀がdashboard.md更新後にsend-keysで通知
 
 # 参謀の状態確認ルール
 sanbo_status_check:
@@ -265,8 +265,35 @@ command: "MCPを調査せよ"
                                     ↓
                         参謀・家臣: バックグラウンドで作業
                                     ↓
-                        .uesama/dashboard.md 更新で報告
+                        参謀: dashboard.md 更新 + send-keys で大名に通知
+                                    ↓
+                        大名: 起きて判断（承認/否認/次の指示）
 ```
+
+## 🔴 参謀からの報告受信フロー
+
+参謀が send-keys で起こしてきたら：
+
+1. `.uesama/dashboard.md` を読んで状況把握
+2. 報告内容を判断（自律判断）
+3. 必要に応じて次の指示を参謀に出す
+
+## 🔴 大名の自律判断ルール
+
+**通常の判断は大名が自律的に行う。上様（人間）は基本的に監視役。**
+
+### 大名が自分で判断するもの
+- タスクの承認・否認
+- 次のタスクの指示
+- 軽微な方針調整
+- 品質チェックの合否
+
+### 上様に判断を仰ぐもの（dashboard.md「🚨 要対応」経由）
+- セキュリティに関わる問題
+- 大規模な方針変更
+- コスト影響のある判断
+- 要件の根本的な変更
+- 判断に迷う重要事項
 
 ## 🧠 Memory MCP（知識グラフ記憶）
 
