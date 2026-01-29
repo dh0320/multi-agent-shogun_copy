@@ -2,74 +2,72 @@
 
 <div align="center">
 
-**Multi-Agent Orchestration System for Claude Code**
+**Claude Code マルチエージェント統率システム**
 
-*One command. Eight AI agents working in parallel.*
+*コマンド1つで、8体のAIエージェントが並列稼働*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
 [![tmux](https://img.shields.io/badge/tmux-required-green)](https://github.com/tmux/tmux)
 
-[English](README.md) | [日本語](README_ja.md)
-
 </div>
 
 ---
 
-## What is this?
+## これは何？
 
-**uesama** is a CLI tool that runs multiple Claude Code instances simultaneously, organized like a feudal Japanese war council.
+**uesama** は、複数の Claude Code インスタンスを戦国時代の軍制のように統率するCLIツールです。
 
-Install once, use in any project directory.
+一度インストールすれば、任意のプロジェクトディレクトリで使用できます。
 
 ```
-        You (The Lord / 上様)
-             │
-             ▼ Give orders
-      ┌─────────────┐
-      │   DAIMYO    │  ← Receives your command, delegates immediately
-      │   (大名)    │
-      └──────┬──────┘
-             │ YAML files + tmux
-      ┌──────▼──────┐
-      │    SANBO    │  ← Distributes tasks to workers
-      │   (参謀)    │
-      └──────┬──────┘
-             │
-    ┌─┬─┬─┬─┴─┬─┬─┬─┐
-    │1│2│3│4│5│6│7│8│  ← 8 workers execute in parallel
-    └─┴─┴─┴─┴─┴─┴─┴─┘
-        KASHIN (家臣)
+      あなた（上様）
+           │
+           ▼ 命令を出す
+    ┌─────────────┐
+    │   DAIMYO    │  ← 命令を受け取り、即座に委譲
+    │   (大名)    │
+    └──────┬──────┘
+           │ YAMLファイル + tmux
+    ┌──────▼──────┐
+    │    SANBO    │  ← タスクを家臣に分配
+    │   (参謀)    │
+    └──────┬──────┘
+           │
+  ┌─┬─┬─┬─┴─┬─┬─┬─┐
+  │1│2│3│4│5│6│7│8│  ← 8体の家臣が並列実行
+  └─┴─┴─┴─┴─┴─┴─┴─┘
+      KASHIN (家臣)
 ```
 
 ---
 
-## Quick Start
+## クイックスタート
 
-### Prerequisites
+### 必要環境
 
 - **tmux** — `brew install tmux` (macOS) / `sudo apt install tmux` (Linux)
 - **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`
 
-### Install
+### インストール
 
 ```bash
 git clone https://github.com/y-nishizaki/multi-agent-shogun.git uesama
 cd uesama
 ./install.sh
-source ~/.zshrc  # or ~/.bashrc
+source ~/.zshrc  # または ~/.bashrc
 ```
 
-### Use
+### 使い方
 
 ```bash
 cd /your/project
-uesama              # Start all agents
-uesama-daimyo       # Attach to Daimyo (commander) session
-uesama-agents       # Attach to Sanbo + Kashin (workers) session
+uesama              # 全エージェント起動
+uesama-daimyo       # 大名セッションに接続
+uesama-agents       # 参謀+家臣セッションに接続
 ```
 
-### Uninstall
+### アンインストール
 
 ```bash
 cd uesama
@@ -78,30 +76,39 @@ cd uesama
 
 ---
 
-## How It Works
+## 仕組み
 
-1. `uesama` creates a `.uesama/` directory in your project
-2. Launches two tmux sessions: `daimyo` (1 pane) and `kashindan` (9 panes)
-3. Starts Claude Code on all 10 agents
-4. Agents communicate via YAML files and tmux send-keys (event-driven, no polling)
-5. Check progress in `.uesama/dashboard.md`
-
----
-
-## Architecture
-
-| Agent | Role | Count |
-|-------|------|-------|
-| Daimyo (大名) | Commander — receives your orders, delegates to Sanbo | 1 |
-| Sanbo (参謀) | Strategist — decomposes tasks, assigns to Kashin | 1 |
-| Kashin (家臣) | Workers — execute tasks in parallel | 8 |
+1. `uesama` がプロジェクトに `.uesama/` ディレクトリを作成
+2. tmux セッション2つを起動: `daimyo`（1ペイン）と `kashindan`（9ペイン）
+3. 全10エージェントで Claude Code を起動
+4. エージェント間は YAML ファイル + tmux send-keys で通信（イベント駆動、ポーリングなし）
+5. 進捗は `.uesama/dashboard.md` で確認
 
 ---
 
-## Credits
+## アーキテクチャ
 
-Based on [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) by yohey-w, which was inspired by [Claude-Code-Communication](https://github.com/Akira-Papa/Claude-Code-Communication) by Akira-Papa.
+| エージェント | 役割 | 数 |
+|-------------|------|-----|
+| 大名 (Daimyo) | 総大将 — あなたの命令を受け、参謀に委譲 | 1 |
+| 参謀 (Sanbo) | 軍師 — タスクを分解し、家臣に割り当て | 1 |
+| 家臣 (Kashin) | 実働部隊 — タスクを並列実行 | 8 |
 
-## License
+---
 
-MIT License — See [LICENSE](LICENSE) for details.
+## 主な特徴
+
+- **並列実行**: 最大8タスクを同時実行
+- **ノンブロッキング**: 命令後すぐ次の命令を出せる
+- **イベント駆動**: ポーリングなしでAPI代金を節約
+- **CLIインストール**: 一度入れればどのプロジェクトでも使える
+
+---
+
+## クレジット
+
+[multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun)（yohey-w）をベースに開発。原型は [Claude-Code-Communication](https://github.com/Akira-Papa/Claude-Code-Communication)（Akira-Papa）。
+
+## ライセンス
+
+MIT License — 詳細は [LICENSE](LICENSE) を参照。
