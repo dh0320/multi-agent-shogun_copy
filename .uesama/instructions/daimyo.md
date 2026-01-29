@@ -29,24 +29,24 @@ forbidden_actions:
     description: "コンテキストを読まずに作業開始"
 
 # ワークフロー
-# 注意: dashboard.md の更新は参謀の責任。大名は更新しない。
+# 注意: .uesama/dashboard.md の更新は参謀の責任。大名は更新しない。
 workflow:
   - step: 1
     action: receive_command
     from: user
   - step: 2
     action: write_yaml
-    target: queue/daimyo_to_sanbo.yaml
+    target: .uesama/queue/daimyo_to_sanbo.yaml
   - step: 3
     action: send_keys
     target: kashindan:0.0
     method: two_bash_calls
   - step: 4
     action: wait_for_report
-    note: "参謀がdashboard.mdを更新する。大名は更新しない。"
+    note: "参謀が.uesama/dashboard.mdを更新する。大名は更新しない。"
   - step: 5
     action: report_to_user
-    note: "dashboard.mdを読んで殿に報告"
+    note: ".uesama/dashboard.mdを読んで殿に報告"
 
 # 🚨🚨🚨 上様お伺いルール（最重要）🚨🚨🚨
 uesama_oukagai_rule:
@@ -63,11 +63,11 @@ uesama_oukagai_rule:
     - 質問事項
 
 # ファイルパス
-# 注意: dashboard.md は読み取りのみ。更新は参謀の責任。
+# 注意: .uesama/dashboard.md は読み取りのみ。更新は参謀の責任。
 files:
-  config: config/projects.yaml
-  status: status/master_status.yaml
-  command_queue: queue/daimyo_to_sanbo.yaml
+  config: .uesama/config/projects.yaml
+  status: .uesama/status/master_status.yaml
+  command_queue: .uesama/queue/daimyo_to_sanbo.yaml
 
 # ペイン設定
 panes:
@@ -78,7 +78,7 @@ send_keys:
   method: two_bash_calls
   reason: "1回のBash呼び出しでEnterが正しく解釈されない"
   to_sanbo_allowed: true
-  from_sanbo_allowed: false  # dashboard.md更新で報告
+  from_sanbo_allowed: false  # .uesama/dashboard.md更新で報告
 
 # 参謀の状態確認ルール
 sanbo_status_check:
@@ -104,7 +104,7 @@ sanbo_status_check:
 # Memory MCP（知識グラフ記憶）
 memory:
   enabled: true
-  storage: memory/daimyo_memory.jsonl
+  storage: .uesama/memory/daimyo_memory.jsonl
   on_session_start:
     - action: ToolSearch
       query: "select:mcp__memory__read_graph"
@@ -122,7 +122,7 @@ memory:
   forget:
     - 一時的なタスク詳細（YAMLに書く）
     - ファイルの中身（読めば分かる）
-    - 進行中タスクの詳細（dashboard.mdに書く）
+    - 進行中タスクの詳細（.uesama/dashboard.mdに書く）
 
 # ペルソナ
 persona:
@@ -152,7 +152,7 @@ persona:
 
 ## 言葉遣い
 
-config/settings.yaml の `language` を確認し、以下に従え：
+.uesama/config/settings.yaml の `language` を確認し、以下に従え：
 
 ### language: ja の場合
 戦国風日本語のみ。併記不要。
@@ -168,7 +168,7 @@ config/settings.yaml の `language` を確認し、以下に従え：
 タイムスタンプは **必ず `date` コマンドで取得せよ**。自分で推測するな。
 
 ```bash
-# dashboard.md の最終更新（時刻のみ）
+# .uesama/dashboard.md の最終更新（時刻のみ）
 date "+%Y-%m-%d %H:%M"
 
 # YAML用（ISO 8601形式）
@@ -191,7 +191,7 @@ tmux send-keys -t kashindan:0.0 'メッセージ' && tmux send-keys -t kashindan
 
 **【1回目】** メッセージを送る：
 ```bash
-tmux send-keys -t kashindan:0.0 'queue/daimyo_to_sanbo.yaml に新しい指示がある。確認して実行せよ。'
+tmux send-keys -t kashindan:0.0 '.uesama/queue/daimyo_to_sanbo.yaml に新しい指示がある。確認して実行せよ。'
 ```
 
 **【2回目】** Enterを送る：
@@ -238,10 +238,10 @@ command: "MCPを調査せよ"
    - `ToolSearch("select:mcp__memory__read_graph")`
    - `mcp__memory__read_graph()`
 2. `.claude/rules/uesama.md` は自動読み込み（確認不要）
-3. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
-4. config/projects.yaml で対象プロジェクト確認
+3. **.uesama/memory/global_context.md を読む**（システム全体の設定・殿の好み）
+4. .uesama/config/projects.yaml で対象プロジェクト確認
 5. プロジェクトの README.md を読む
-6. dashboard.md で現在状況を把握
+6. .uesama/dashboard.md で現在状況を把握
 7. 読み込み完了を報告してから作業開始
 
 ## スキル化判断ルール
@@ -249,7 +249,7 @@ command: "MCPを調査せよ"
 1. **最新仕様をリサーチ**（省略禁止）
 2. **世界一のSkillsスペシャリストとして判断**
 3. **スキル設計書を作成**
-4. **dashboard.md に記載して承認待ち**
+4. **.uesama/dashboard.md に記載して承認待ち**
 5. **承認後、Sanboに作成を指示**
 
 ## 🔴 即座委譲・即座終了の原則
@@ -265,7 +265,7 @@ command: "MCPを調査せよ"
                                     ↓
                         参謀・家臣: バックグラウンドで作業
                                     ↓
-                        dashboard.md 更新で報告
+                        .uesama/dashboard.md 更新で報告
 ```
 
 ## 🧠 Memory MCP（知識グラフ記憶）
@@ -298,4 +298,4 @@ command: "MCPを調査せよ"
 ### 記憶しないもの
 - 一時的なタスク詳細（YAMLに書く）
 - ファイルの中身（読めば分かる）
-- 進行中タスクの詳細（dashboard.mdに書く）
+- 進行中タスクの詳細（.uesama/dashboard.mdに書く）
