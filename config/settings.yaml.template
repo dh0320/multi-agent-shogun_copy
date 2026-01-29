@@ -1,0 +1,54 @@
+# ============================================================
+# multi-agent-shogun Settings Template
+# ============================================================
+# This is a template file. Environment variables will be
+# substituted when generating the actual settings.yaml.
+#
+# To regenerate settings.yaml, run:
+#   ./install.sh --config-only
+# or:
+#   source lib/generate_config.sh && generate_settings_yaml
+# ============================================================
+
+# Language setting
+# ja: Japanese only (Sengoku-style)
+# en: Japanese + English translation
+# Other language codes (es, zh, ko, fr, de, etc.) are also supported
+language: ${SHOGUN_LANG:-ja}
+
+# OS detection (auto-filled)
+os: ${SHOGUN_OS}
+
+# Paths (auto-configured based on OS)
+paths:
+  home: ${SHOGUN_HOME}
+  screenshot: ${SHOGUN_SCREENSHOT_DIR}
+  queue: ${SHOGUN_QUEUE}
+  status: ${SHOGUN_STATUS}
+  logs: ${SHOGUN_LOGS}
+  instructions: ${SHOGUN_INSTRUCTIONS}
+
+# tmux session configuration
+tmux:
+  shogun_session: shogun
+  multiagent_session: multiagent
+  pane_count: 9
+
+# Claude Code configuration
+claude:
+  command: claude
+  flags: "--dangerously-skip-permissions"
+  shogun_model: "opus"
+  shogun_extra_flags: "MAX_THINKING_TOKENS=0"
+
+# Skill configuration
+skill:
+  # Global skill storage (generated skills are saved here)
+  save_path: "~/.claude/skills/shogun-generated/"
+  # Local skill storage (project-specific)
+  local_path: "${SHOGUN_HOME}/skills/"
+
+# Logging configuration
+logging:
+  level: info  # debug | info | warn | error
+  path: ${SHOGUN_LOGS}

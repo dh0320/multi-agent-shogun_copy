@@ -1,0 +1,16 @@
+# ============================================================
+# multi-agent-shogun Projects Configuration
+# ============================================================
+# This is a sample file. Copy to projects.yaml and customize.
+#
+#   cp config/projects.yaml.sample config/projects.yaml
+# ============================================================
+
+projects:
+  - id: sample_project
+    name: "Sample Project"
+    path: "/path/to/your/project"
+    priority: high
+    status: active
+
+current_project: sample_project

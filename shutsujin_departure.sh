@@ -13,6 +13,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Source the abstraction layer if available
+if [[ -f "${SCRIPT_DIR}/lib/detect_os.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/detect_os.sh"
+fi
+if [[ -f "${SCRIPT_DIR}/lib/utils.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/utils.sh"
+fi
+
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"
 if [ -f "./config/settings.yaml" ]; then
@@ -541,17 +549,48 @@ echo "  ════════════════════════
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 8: Windows Terminal でタブを開く（-t オプション時のみ）
+# STEP 8: ターミナルでタブを開く（-t オプション時のみ、クロスプラットフォーム対応）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$OPEN_TERMINAL" = true ]; then
-    log_info "📺 Windows Terminal でタブを展開中..."
+    log_info "📺 ターミナルタブを展開中..."
 
-    # Windows Terminal が利用可能か確認
-    if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
+    # Use abstraction layer if available
+    if type attach_all_terminals &>/dev/null; then
+        attach_all_terminals
         log_success "  └─ ターミナルタブ展開完了"
     else
-        log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
+        # Fallback: OS-specific terminal opening
+        case "${SHOGUN_OS:-wsl}" in
+            wsl)
+                if command -v wt.exe &> /dev/null; then
+                    wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
+                    log_success "  └─ ターミナルタブ展開完了"
+                else
+                    log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
+                fi
+                ;;
+            macos)
+                if command -v osascript &> /dev/null; then
+                    osascript -e 'tell app "Terminal" to do script "tmux attach-session -t shogun"'
+                    osascript -e 'tell app "Terminal" to do script "tmux attach-session -t multiagent"'
+                    log_success "  └─ ターミナルタブ展開完了"
+                else
+                    log_info "  └─ 手動でアタッチしてください。"
+                fi
+                ;;
+            linux)
+                if command -v gnome-terminal &> /dev/null; then
+                    gnome-terminal -- tmux attach-session -t shogun &
+                    gnome-terminal -- tmux attach-session -t multiagent &
+                    log_success "  └─ ターミナルタブ展開完了"
+                else
+                    log_info "  └─ 手動でアタッチしてください。"
+                fi
+                ;;
+            *)
+                log_info "  └─ 手動でアタッチしてください。"
+                ;;
+        esac
     fi
     echo ""
 fi

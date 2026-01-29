@@ -58,11 +58,16 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。ま�
 ### ファイル構成
 ```
 config/projects.yaml              # プロジェクト一覧
+config/settings.yaml              # システム設定（言語、パス等）
+config/settings.yaml.template     # 設定テンプレート（環境変数対応）
 status/master_status.yaml         # 全体進捗
 queue/shogun_to_karo.yaml         # Shogun → Karo 指示
 queue/tasks/ashigaru{N}.yaml      # Karo → Ashigaru 割当（各足軽専用）
 queue/reports/ashigaru{N}_report.yaml  # Ashigaru → Karo 報告
 dashboard.md                      # 人間用ダッシュボード
+lib/detect_os.sh                  # OS検出モジュール
+lib/utils.sh                      # 共通ユーティリティ
+lib/generate_config.sh            # 設定ファイル生成
 ```
 
 **注意**: 各足軽には専用のタスクファイル（queue/tasks/ashigaru1.yaml 等）がある。
@@ -105,6 +110,46 @@ language: ja  # ja, en, es, zh, ko, fr, de 等
 - instructions/shogun.md - 将軍の指示書
 - instructions/karo.md - 家老の指示書
 - instructions/ashigaru.md - 足軽の指示書
+
+## クロスプラットフォーム対応
+
+multi-agent-shogunは以下のOSをサポートする：
+- macOS (Darwin)
+- Linux (Ubuntu, Fedora, Arch, etc.)
+- WSL2 (Windows Subsystem for Linux)
+- Windows (Git Bash/MSYS2)
+
+### 起動方法
+```bash
+# 推奨: 統一エントリーポイント
+./start.sh              # 全エージェント起動
+./start.sh -s           # セットアップのみ（Claude手動起動）
+./start.sh -t           # ターミナルタブ展開
+
+# または Makefile
+make start              # 全エージェント起動
+make stop               # 全セッション停止
+make check              # 前提条件チェック
+
+# 従来のスクリプトも引き続き利用可能
+./shutsujin_departure.sh
+```
+
+### インストール方法
+```bash
+# 推奨: 統一インストーラー
+./install.sh            # 全プラットフォーム対応
+./install.sh --check    # 前提条件のみチェック
+
+# または Makefile
+make install
+```
+
+### 環境変数
+以下の環境変数で動作をカスタマイズ可能：
+- `SHOGUN_HOME`: ホームディレクトリ
+- `SHOGUN_LANG`: 言語設定（ja, en, etc.）
+- `SHOGUN_SCREENSHOT_DIR`: スクリーンショット保存先
 
 ## Summary生成時の必須事項
 

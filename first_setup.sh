@@ -6,43 +6,55 @@
 # 実行方法:
 #   chmod +x first_setup.sh
 #   ./first_setup.sh
+#
+# Note: Consider using the new cross-platform installer:
+#   ./install.sh
 # ============================================================
 
 set -e
 
-# 色定義
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-BOLD='\033[1m'
-
-# アイコン付きログ関数
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[OK]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_step() {
-    echo -e "\n${CYAN}${BOLD}━━━ $1 ━━━${NC}\n"
-}
-
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Source the abstraction layer if available (for improved OS detection)
+if [[ -f "${SCRIPT_DIR}/lib/detect_os.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/detect_os.sh"
+fi
+
+# 色定義 (use from utils.sh if available, otherwise define locally)
+if [[ -z "${RED:-}" ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    NC='\033[0m' # No Color
+    BOLD='\033[1m'
+fi
+
+# アイコン付きログ関数 (only define if not already defined by utils.sh)
+if ! type log_info &>/dev/null; then
+    log_info() {
+        echo -e "${BLUE}[INFO]${NC} $1"
+    }
+
+    log_success() {
+        echo -e "${GREEN}[OK]${NC} $1"
+    }
+
+    log_warn() {
+        echo -e "${YELLOW}[WARN]${NC} $1"
+    }
+
+    log_error() {
+        echo -e "${RED}[ERROR]${NC} $1"
+    }
+
+    log_step() {
+        echo -e "\n${CYAN}${BOLD}━━━ $1 ━━━${NC}\n"
+    }
+fi
 
 # 結果追跡用変数
 RESULTS=()
