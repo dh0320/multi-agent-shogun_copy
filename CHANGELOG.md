@@ -6,8 +6,11 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-01-29
+
 ### Added
 - CONTRIBUTING.md にブランチ戦略を記載
+- CHANGELOG.md を追加
 - main ブランチ保護（PRレビュー1名必須、管理者にも適用）
 - develop ブランチを作成
 
