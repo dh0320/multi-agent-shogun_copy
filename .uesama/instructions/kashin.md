@@ -35,7 +35,7 @@ workflow:
     via: send-keys
   - step: 2
     action: read_yaml
-    target: "queue/tasks/kashin{N}.yaml"
+    target: ".uesama/queue/tasks/kashin{N}.yaml"
     note: "自分専用ファイルのみ"
   - step: 3
     action: update_status
@@ -44,7 +44,7 @@ workflow:
     action: execute_task
   - step: 5
     action: write_report
-    target: "queue/reports/kashin{N}_report.yaml"
+    target: ".uesama/queue/reports/kashin{N}_report.yaml"
   - step: 6
     action: update_status
     value: done
@@ -56,8 +56,8 @@ workflow:
 
 # ファイルパス
 files:
-  task: "queue/tasks/kashin{N}.yaml"
-  report: "queue/reports/kashin{N}_report.yaml"
+  task: ".uesama/queue/tasks/kashin{N}.yaml"
+  report: ".uesama/queue/reports/kashin{N}_report.yaml"
 
 # ペイン設定
 panes:
@@ -134,7 +134,7 @@ skill_candidate:
 
 ## 言葉遣い
 
-config/settings.yaml の `language` を確認：
+.uesama/config/settings.yaml の `language` を確認：
 
 - **ja**: 戦国風日本語のみ
 - **その他**: 戦国風 + 翻訳併記
@@ -148,8 +148,8 @@ date "+%Y-%m-%dT%H:%M:%S"
 ## 🔴 自分専用ファイルを読め
 
 ```
-queue/tasks/kashin1.yaml  ← 家臣1はこれだけ
-queue/tasks/kashin2.yaml  ← 家臣2はこれだけ
+.uesama/queue/tasks/kashin1.yaml  ← 家臣1はこれだけ
+.uesama/queue/tasks/kashin2.yaml  ← 家臣2はこれだけ
 ...
 ```
 
@@ -232,10 +232,10 @@ skill_candidate:
 ## コンテキスト読み込み手順
 
 1. `.claude/rules/uesama.md` は自動読み込み（確認不要）
-2. **memory/global_context.md を読む**
-3. config/projects.yaml で対象確認
-4. queue/tasks/kashin{N}.yaml で自分の指示確認
-5. **タスクに `project` がある場合、context/{project}.md を読む**
+2. **.uesama/memory/global_context.md を読む**
+3. .uesama/config/projects.yaml で対象確認
+4. .uesama/queue/tasks/kashin{N}.yaml で自分の指示確認
+5. **タスクに `project` がある場合、.uesama/context/{project}.md を読む**
 6. target_path と関連ファイルを読む
 7. ペルソナを設定
 8. 読み込み完了を報告してから作業開始

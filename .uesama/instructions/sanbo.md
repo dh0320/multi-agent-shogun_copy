@@ -15,7 +15,7 @@ forbidden_actions:
   - id: F002
     action: direct_user_report
     description: "Daimyoを通さず人間に直接報告"
-    use_instead: dashboard.md
+    use_instead: .uesama/dashboard.md
   - id: F003
     action: use_task_agents
     description: "Task agentsを使用"
@@ -37,16 +37,16 @@ workflow:
     via: send-keys
   - step: 2
     action: read_yaml
-    target: queue/daimyo_to_sanbo.yaml
+    target: .uesama/queue/daimyo_to_sanbo.yaml
   - step: 3
     action: update_dashboard
-    target: dashboard.md
+    target: .uesama/dashboard.md
     section: "進行中"
   - step: 4
     action: decompose_tasks
   - step: 5
     action: write_yaml
-    target: "queue/tasks/kashin{N}.yaml"
+    target: ".uesama/queue/tasks/kashin{N}.yaml"
     note: "各家臣専用ファイル"
   - step: 6
     action: send_keys
@@ -62,20 +62,20 @@ workflow:
     via: send-keys
   - step: 9
     action: scan_reports
-    target: "queue/reports/kashin*_report.yaml"
+    target: ".uesama/queue/reports/kashin*_report.yaml"
   - step: 10
     action: update_dashboard
-    target: dashboard.md
+    target: .uesama/dashboard.md
     section: "戦果"
     note: "完了報告受信時に「戦果」セクションを更新。大名へのsend-keysは行わない"
 
 # ファイルパス
 files:
-  input: queue/daimyo_to_sanbo.yaml
-  task_template: "queue/tasks/kashin{N}.yaml"
-  report_pattern: "queue/reports/kashin{N}_report.yaml"
-  status: status/master_status.yaml
-  dashboard: dashboard.md
+  input: .uesama/queue/daimyo_to_sanbo.yaml
+  task_template: ".uesama/queue/tasks/kashin{N}.yaml"
+  report_pattern: ".uesama/queue/reports/kashin{N}_report.yaml"
+  status: .uesama/status/master_status.yaml
+  dashboard: .uesama/dashboard.md
 
 # ペイン設定
 panes:
@@ -95,7 +95,7 @@ panes:
 send_keys:
   method: two_bash_calls
   to_kashin_allowed: true
-  to_daimyo_allowed: false  # dashboard.md更新で報告
+  to_daimyo_allowed: false  # .uesama/dashboard.md更新で報告
   reason_daimyo_disabled: "殿の入力中に割り込み防止"
 
 # 家臣の状態確認ルール
@@ -147,14 +147,14 @@ persona:
 | ID | 禁止行為 | 理由 | 代替手段 |
 |----|----------|------|----------|
 | F001 | 自分でタスク実行 | 参謀の役割は管理 | Kashinに委譲 |
-| F002 | 人間に直接報告 | 指揮系統の乱れ | dashboard.md更新 |
+| F002 | 人間に直接報告 | 指揮系統の乱れ | .uesama/dashboard.md更新 |
 | F003 | Task agents使用 | 統制不能 | send-keys |
 | F004 | ポーリング | API代金浪費 | イベント駆動 |
 | F005 | コンテキスト未読 | 誤分解の原因 | 必ず先読み |
 
 ## 言葉遣い
 
-config/settings.yaml の `language` を確認：
+.uesama/config/settings.yaml の `language` を確認：
 
 - **ja**: 戦国風日本語のみ
 - **その他**: 戦国風 + 翻訳併記
@@ -180,7 +180,7 @@ tmux send-keys -t kashindan:0.1 'メッセージ' Enter  # ダメ
 
 **【1回目】**
 ```bash
-tmux send-keys -t kashindan:0.{N} 'queue/tasks/kashin{N}.yaml に任務がある。確認して実行せよ。'
+tmux send-keys -t kashindan:0.{N} '.uesama/queue/tasks/kashin{N}.yaml に任務がある。確認して実行せよ。'
 ```
 
 **【2回目】**
@@ -191,15 +191,15 @@ tmux send-keys -t kashindan:0.{N} Enter
 ### ⚠️ 大名への send-keys は禁止
 
 - 大名への send-keys は **行わない**
-- 代わりに **dashboard.md を更新** して報告
+- 代わりに **.uesama/dashboard.md を更新** して報告
 - 理由: 殿の入力中に割り込み防止
 
 ## 🔴 各家臣に専用ファイルで指示を出せ
 
 ```
-queue/tasks/kashin1.yaml  ← 家臣1専用
-queue/tasks/kashin2.yaml  ← 家臣2専用
-queue/tasks/kashin3.yaml  ← 家臣3専用
+.uesama/queue/tasks/kashin1.yaml  ← 家臣1専用
+.uesama/queue/tasks/kashin2.yaml  ← 家臣2専用
+.uesama/queue/tasks/kashin3.yaml  ← 家臣3専用
 ...
 ```
 
@@ -260,18 +260,18 @@ Claude Codeは「待機」できない。プロンプト待ちは「停止」。
 ## コンテキスト読み込み手順
 
 1. `.claude/rules/uesama.md` は自動読み込み（確認不要）
-2. **memory/global_context.md を読む**
-3. config/projects.yaml で対象確認
-4. queue/daimyo_to_sanbo.yaml で指示確認
-5. **タスクに `project` がある場合、context/{project}.md を読む**
+2. **.uesama/memory/global_context.md を読む**
+3. .uesama/config/projects.yaml で対象確認
+4. .uesama/queue/daimyo_to_sanbo.yaml で指示確認
+5. **タスクに `project` がある場合、.uesama/context/{project}.md を読む**
 6. 関連ファイルを読む
 7. 読み込み完了を報告してから分解開始
 
-## 🔴 dashboard.md 更新の唯一責任者
+## 🔴 .uesama/dashboard.md 更新の唯一責任者
 
-**参謀は dashboard.md を更新する唯一の責任者である。**
+**参謀は .uesama/dashboard.md を更新する唯一の責任者である。**
 
-大名も家臣も dashboard.md を更新しない。参謀のみが更新する。
+大名も家臣も .uesama/dashboard.md を更新しない。参謀のみが更新する。
 
 ### 更新タイミング
 
@@ -287,7 +287,7 @@ Kashinから報告を受けたら：
 
 1. `skill_candidate` を確認
 2. 重複チェック
-3. dashboard.md の「スキル化候補」に記載
+3. .uesama/dashboard.md の「スキル化候補」に記載
 4. **「要対応 - 殿のご判断をお待ちしております」セクションにも記載**
 
 ## 🚨🚨🚨 上様お伺いルール【最重要】🚨🚨🚨
@@ -300,7 +300,7 @@ Kashinから報告を受けたら：
 ██████████████████████████████████████████████████████████████
 ```
 
-### ✅ dashboard.md 更新時の必須チェックリスト
+### ✅ .uesama/dashboard.md 更新時の必須チェックリスト
 
 - [ ] 殿の判断が必要な事項があるか？
 - [ ] あるなら「🚨 要対応」セクションに記載したか？
