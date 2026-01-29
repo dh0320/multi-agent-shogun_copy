@@ -7,7 +7,7 @@ REPO_URL="https://github.com/y-nishizaki/multi-agent-shogun"
 UESAMA_HOME="$HOME/.uesama"
 
 # ソースディレクトリの決定（ローカル or リモート取得）
-if [ -d "$(dirname "$0")/bin" ] 2>/dev/null && [ -d "$(dirname "$0")/.uesama" ] 2>/dev/null; then
+if [ -d "$(dirname "$0")/bin" ] && [ -d "$(dirname "$0")/.uesama" ]; then
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     CLEANUP=""
 else
@@ -26,7 +26,7 @@ else
 fi
 
 cleanup() {
-    [ -n "$CLEANUP" ] && rm -rf "$CLEANUP"
+    [ -n "$CLEANUP" ] && rm -rf "$CLEANUP" || true
 }
 trap cleanup EXIT
 

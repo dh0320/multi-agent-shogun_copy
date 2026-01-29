@@ -17,3 +17,4 @@ config/settings.yaml
 test_output/
 demo_output/
 output/
+test-project/
