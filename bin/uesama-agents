@@ -1,0 +1,3 @@
+#!/bin/bash
+# uesama-agents - 参謀+家臣セッションにアタッチ
+exec tmux attach-session -t kashindan 2>/dev/null || echo "kashindan セッションが見つかりません。uesama で起動してください。"

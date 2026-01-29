@@ -1,0 +1,80 @@
+#!/bin/bash
+# uesama インストールスクリプト
+# ~/.uesama/ にファイルをコピーし、PATH に追加する
+set -e
+
+UESAMA_HOME="$HOME/.uesama"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo ""
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║  🏯 uesama インストーラー                     ║"
+echo "  ╚══════════════════════════════════════════════╝"
+echo ""
+
+# 既存のインストールがあれば更新
+if [ -d "$UESAMA_HOME" ]; then
+    echo "  既存のインストールを更新します..."
+    rm -rf "$UESAMA_HOME"
+fi
+
+# コピー
+mkdir -p "$UESAMA_HOME"
+cp -r "$SCRIPT_DIR/bin" "$UESAMA_HOME/"
+cp -r "$SCRIPT_DIR/scripts" "$UESAMA_HOME/"
+cp -r "$SCRIPT_DIR/instructions" "$UESAMA_HOME/"
+cp -r "$SCRIPT_DIR/templates" "$UESAMA_HOME/"
+cp -r "$SCRIPT_DIR/skills" "$UESAMA_HOME/"
+cp "$SCRIPT_DIR/CLAUDE.md" "$UESAMA_HOME/"
+
+# config ディレクトリ作成
+mkdir -p "$UESAMA_HOME/config"
+if [ ! -f "$UESAMA_HOME/config/settings.yaml" ]; then
+    cat > "$UESAMA_HOME/config/settings.yaml" << 'EOF'
+language: ja
+kashin_count: 8
+EOF
+fi
+
+# 実行権限付与
+chmod +x "$UESAMA_HOME/bin/"*
+chmod +x "$UESAMA_HOME/scripts/"*
+
+# PATH に追加
+SHELL_RC=""
+if [ -f "$HOME/.zshrc" ]; then
+    SHELL_RC="$HOME/.zshrc"
+elif [ -f "$HOME/.bashrc" ]; then
+    SHELL_RC="$HOME/.bashrc"
+fi
+
+PATH_LINE='export PATH="$HOME/.uesama/bin:$PATH"'
+UESAMA_HOME_LINE='export UESAMA_HOME="$HOME/.uesama"'
+
+if [ -n "$SHELL_RC" ]; then
+    if ! grep -q '\.uesama/bin' "$SHELL_RC" 2>/dev/null; then
+        echo "" >> "$SHELL_RC"
+        echo "# uesama multi-agent system" >> "$SHELL_RC"
+        echo "$UESAMA_HOME_LINE" >> "$SHELL_RC"
+        echo "$PATH_LINE" >> "$SHELL_RC"
+        echo "  PATH を $SHELL_RC に追加しました"
+    else
+        echo "  PATH は既に設定済みです"
+    fi
+else
+    echo "  ⚠ シェル設定ファイルが見つかりません"
+    echo "  手動で以下を追加してください:"
+    echo "    $UESAMA_HOME_LINE"
+    echo "    $PATH_LINE"
+fi
+
+echo ""
+echo "  ✅ インストール完了！"
+echo ""
+echo "  使い方:"
+echo "    source $SHELL_RC    # PATH を反映"
+echo "    cd /your/project"
+echo "    uesama              # マルチエージェント起動"
+echo "    uesama-daimyo       # 大名セッションに接続"
+echo "    uesama-agents       # 参謀+家臣セッションに接続"
+echo ""

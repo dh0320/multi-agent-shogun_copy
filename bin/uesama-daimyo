@@ -1,0 +1,3 @@
+#!/bin/bash
+# uesama-daimyo - 大名セッションにアタッチ
+exec tmux attach-session -t daimyo 2>/dev/null || echo "大名セッションが見つかりません。uesama で起動してください。"

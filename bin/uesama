@@ -1,0 +1,18 @@
+#!/bin/bash
+# uesama - マルチエージェント起動コマンド
+# 使用方法: uesama [プロジェクトディレクトリ]
+set -e
+
+UESAMA_HOME="${UESAMA_HOME:-$HOME/.uesama}"
+
+if [ ! -d "$UESAMA_HOME" ]; then
+    echo "エラー: uesama がインストールされていません"
+    echo "インストール: cd uesama && ./install.sh"
+    exit 1
+fi
+
+# 依存チェック
+"$UESAMA_HOME/scripts/setup.sh" || exit 1
+
+# 起動
+exec "$UESAMA_HOME/scripts/start.sh" "${1:-.}"
