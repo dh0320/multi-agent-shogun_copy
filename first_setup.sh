@@ -57,8 +57,6 @@ echo ""
 echo "  このスクリプトは初回セットアップ用です。"
 echo "  依存関係の確認とディレクトリ構造の作成を行います。"
 echo ""
-echo "  インストール先: $SCRIPT_DIR"
-echo ""
 
 # ============================================================
 # STEP 1: OS チェック
@@ -102,31 +100,12 @@ else
 
     # Ubuntu/Debian系かチェック
     if command -v apt-get &> /dev/null; then
-        if [ ! -t 0 ]; then
-            REPLY="Y"
-        else
-            read -p "  tmux をインストールしますか? [Y/n]: " REPLY
-        fi
+        read -p "  tmux をインストールしますか? [Y/n]: " REPLY
         REPLY=${REPLY:-Y}
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "tmux をインストール中..."
-            if ! sudo -n apt-get update -qq 2>/dev/null; then
-                if ! sudo apt-get update -qq 2>/dev/null; then
-                    log_error "sudo の実行に失敗しました。ターミナルから直接実行してください"
-                    RESULTS+=("tmux: インストール失敗 (sudo失敗)")
-                    HAS_ERROR=true
-                fi
-            fi
-
-            if [ "$HAS_ERROR" != true ]; then
-                if ! sudo -n apt-get install -y tmux 2>/dev/null; then
-                    if ! sudo apt-get install -y tmux 2>/dev/null; then
-                        log_error "tmux のインストールに失敗しました"
-                        RESULTS+=("tmux: インストール失敗")
-                        HAS_ERROR=true
-                    fi
-                fi
-            fi
+            sudo apt-get update -qq
+            sudo apt-get install -y tmux
 
             if command -v tmux &> /dev/null; then
                 TMUX_VERSION=$(tmux -V | awk '{print $2}')
@@ -174,64 +153,21 @@ if command -v node &> /dev/null; then
 else
     log_warn "Node.js がインストールされていません"
     echo ""
-
-    # nvm が既にインストール済みか確認
-    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-    if [ -s "$NVM_DIR/nvm.sh" ]; then
-        log_info "nvm が既にインストール済みです。Node.js をセットアップ中..."
-        \. "$NVM_DIR/nvm.sh"
-    else
-        # nvm 自動インストール
-        if [ ! -t 0 ]; then
-            REPLY="Y"
-        else
-            read -p "  Node.js (nvm経由) をインストールしますか? [Y/n]: " REPLY
-        fi
-        REPLY=${REPLY:-Y}
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log_info "nvm をインストール中..."
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        else
-            log_warn "Node.js のインストールをスキップしました"
-            echo ""
-            echo "  手動でインストールする場合:"
-            echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-            echo "    source ~/.bashrc"
-            echo "    nvm install 20"
-            echo ""
-            RESULTS+=("Node.js: 未インストール (スキップ)")
-            HAS_ERROR=true
-        fi
-    fi
-
-    # nvm が利用可能なら Node.js をインストール
-    if command -v nvm &> /dev/null; then
-        log_info "Node.js 20 をインストール中..."
-        nvm install 20 || true
-        nvm use 20 || true
-
-        if command -v node &> /dev/null; then
-            NODE_VERSION=$(node -v)
-            log_success "Node.js インストール完了 ($NODE_VERSION)"
-            RESULTS+=("Node.js: インストール完了 ($NODE_VERSION)")
-        else
-            log_error "Node.js のインストールに失敗しました"
-            RESULTS+=("Node.js: インストール失敗")
-            HAS_ERROR=true
-        fi
-    elif [ "$HAS_ERROR" != true ]; then
-        log_error "nvm のインストールに失敗しました"
-        echo ""
-        echo "  手動でインストールしてください:"
-        echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-        echo "    source ~/.bashrc"
-        echo "    nvm install 20"
-        echo ""
-        RESULTS+=("Node.js: 未インストール (nvm失敗)")
-        HAS_ERROR=true
-    fi
+    echo "  Node.js のインストール方法（推奨: nvm を使用）:"
+    echo ""
+    echo "  1. nvm をインストール:"
+    echo "     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash"
+    echo ""
+    echo "  2. ターミナルを再起動後:"
+    echo "     nvm install 20"
+    echo "     nvm use 20"
+    echo ""
+    echo "  または、直接インストール（Ubuntu）:"
+    echo "     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
+    echo "     sudo apt-get install -y nodejs"
+    echo ""
+    RESULTS+=("Node.js: 未インストール")
+    HAS_ERROR=true
 fi
 
 # npm チェック
@@ -263,11 +199,7 @@ else
         echo "  インストールコマンド:"
         echo "     npm install -g @anthropic-ai/claude-code"
         echo ""
-        if [ ! -t 0 ]; then
-            REPLY="Y"
-        else
-            read -p "  今すぐインストールしますか? [Y/n]: " REPLY
-        fi
+        read -p "  今すぐインストールしますか? [Y/n]: " REPLY
         REPLY=${REPLY:-Y}
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "Claude Code CLI をインストール中..."
@@ -294,6 +226,110 @@ else
 fi
 
 # ============================================================
+# STEP 4.5: GitHub Copilot CLI 確認（オプション）
+# ============================================================
+log_step "STEP 4.5: GitHub Copilot CLI 確認（オプション）"
+
+echo "  GitHub Copilot CLI は multi-agent-shogun で使用可能なオプションのCLIです。"
+echo "  Claude Code CLIの代わりに、またはClaude Code CLIと併用できます。"
+echo ""
+
+if command -v gh &> /dev/null; then
+    log_success "GitHub CLI (gh) がインストールされています"
+    gh --version | head -1
+    
+    # Copilot CLI の確認
+    if command -v copilot &> /dev/null; then
+        log_success "GitHub Copilot CLI がインストールされています"
+        copilot --version | head -1
+        RESULTS+=("GitHub Copilot CLI: インストール済み")
+        
+        # GitHub認証の確認
+        if gh auth status &> /dev/null; then
+            log_success "GitHub に認証済みです"
+            RESULTS+=("GitHub認証: OK")
+        else
+            log_warn "GitHub に認証されていません"
+            echo "  認証するには: gh auth login"
+            RESULTS+=("GitHub認証: 未認証")
+        fi
+    else
+        log_info "GitHub Copilot CLI が見つかりません"
+        echo ""
+        echo "  【インストール方法】"
+        echo "  GitHub Copilot CLI はGitHub CLIの一部として提供されています。"
+        echo "  最新のGitHub CLIを使用してください。"
+        echo ""
+        echo "  インストールコマンド:"
+        echo "     brew upgrade gh  # Mac"
+        echo "     # または"
+        echo "     sudo apt update && sudo apt upgrade gh  # Ubuntu/Debian"
+        echo ""
+        read -p "  今すぐインストールを試みますか? [y/N]: " REPLY
+        REPLY=${REPLY:-N}
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                log_info "GitHub CLI を更新中..."
+                brew upgrade gh || true
+            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                log_info "GitHub CLI を更新中..."
+                sudo apt update && sudo apt upgrade gh || true
+            fi
+            
+            if command -v copilot &> /dev/null; then
+                log_success "GitHub Copilot CLI インストール完了"
+                RESULTS+=("GitHub Copilot CLI: インストール完了")
+            else
+                log_warn "インストールを確認できませんでした"
+                RESULTS+=("GitHub Copilot CLI: 未インストール")
+            fi
+        else
+            log_info "スキップしました（後でインストール可能）"
+            RESULTS+=("GitHub Copilot CLI: スキップ")
+        fi
+    fi
+else
+    log_warn "GitHub CLI (gh) がインストールされていません"
+    echo ""
+    echo "  【インストール方法】"
+    echo "  GitHub Copilot CLI を使用するには、まず GitHub CLI が必要です。"
+    echo ""
+    echo "  インストールコマンド:"
+    echo "     brew install gh  # Mac"
+    echo "     # または"
+    echo "     sudo apt install gh  # Ubuntu/Debian"
+    echo ""
+    read -p "  今すぐインストールしますか? [y/N]: " REPLY
+    REPLY=${REPLY:-N}
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            log_info "GitHub CLI をインストール中..."
+            brew install gh || true
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            log_info "GitHub CLI をインストール中..."
+            sudo apt update && sudo apt install -y gh || true
+        fi
+        
+        if command -v gh &> /dev/null; then
+            log_success "GitHub CLI インストール完了"
+            RESULTS+=("GitHub CLI: インストール完了")
+            
+            # Copilot CLIの確認
+            if command -v copilot &> /dev/null; then
+                log_success "GitHub Copilot CLI も利用可能です"
+                RESULTS+=("GitHub Copilot CLI: 利用可能")
+            fi
+        else
+            log_warn "インストールを確認できませんでした"
+            RESULTS+=("GitHub CLI: インストール失敗")
+        fi
+    else
+        log_info "スキップしました（後でインストール可能）"
+        RESULTS+=("GitHub CLI/Copilot CLI: スキップ")
+    fi
+fi
+
+# ============================================================
 # STEP 5: ディレクトリ構造作成
 # ============================================================
 log_step "STEP 5: ディレクトリ構造作成"
@@ -306,9 +342,9 @@ DIRECTORIES=(
     "status"
     "instructions"
     "logs"
+    "lib"
     "demo_output"
     "skills"
-    "memory"
 )
 
 CREATED_COUNT=0
@@ -318,9 +354,9 @@ for dir in "${DIRECTORIES[@]}"; do
     if [ ! -d "$SCRIPT_DIR/$dir" ]; then
         mkdir -p "$SCRIPT_DIR/$dir"
         log_info "作成: $dir/"
-        CREATED_COUNT=$((CREATED_COUNT + 1))
+        ((CREATED_COUNT++))
     else
-        EXISTED_COUNT=$((EXISTED_COUNT + 1))
+        ((EXISTED_COUNT++))
     fi
 done
 
@@ -341,7 +377,7 @@ log_step "STEP 6: 設定ファイル確認"
 # config/settings.yaml
 if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     log_info "config/settings.yaml を作成中..."
-    cat > "$SCRIPT_DIR/config/settings.yaml" << EOF
+    cat > "$SCRIPT_DIR/config/settings.yaml" << 'EOF'
 # multi-agent-shogun 設定ファイル
 
 # 言語設定
@@ -350,23 +386,18 @@ if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
 # その他の言語コード（es, zh, ko, fr, de 等）も対応
 language: ja
 
-# シェル設定
-# bash: bash用プロンプト（デフォルト）
-# zsh: zsh用プロンプト
-shell: bash
-
 # スキル設定
 skill:
-  # スキル保存先（スキル名に shogun- プレフィックスを付けて保存）
-  save_path: "~/.claude/skills/"
+  # スキル保存先（生成されたスキルはここに保存）
+  save_path: "~/.claude/skills/shogun-generated/"
 
   # ローカルスキル保存先（このプロジェクト専用）
-  local_path: "$SCRIPT_DIR/skills/"
+  local_path: "~/multi-agent-shogun/skills/"
 
 # ログ設定
 logging:
   level: info  # debug | info | warn | error
-  path: "$SCRIPT_DIR/logs/"
+  path: "~/multi-agent-shogun/logs/"
 EOF
     log_success "settings.yaml を作成しました"
 else
@@ -389,27 +420,6 @@ EOF
     log_success "projects.yaml を作成しました"
 else
     log_info "config/projects.yaml は既に存在します"
-fi
-
-# memory/global_context.md（システム全体のコンテキスト）
-if [ ! -f "$SCRIPT_DIR/memory/global_context.md" ]; then
-    log_info "memory/global_context.md を作成中..."
-    cat > "$SCRIPT_DIR/memory/global_context.md" << 'EOF'
-# グローバルコンテキスト
-最終更新: (未設定)
-
-## システム方針
-- (殿の好み・方針をここに記載)
-
-## プロジェクト横断の決定事項
-- (複数プロジェクトに影響する決定をここに記載)
-
-## 注意事項
-- (全エージェントが知るべき注意点をここに記載)
-EOF
-    log_success "global_context.md を作成しました"
-else
-    log_info "memory/global_context.md は既に存在します"
 fi
 
 RESULTS+=("設定ファイル: OK")
@@ -475,100 +485,6 @@ done
 RESULTS+=("実行権限: OK")
 
 # ============================================================
-# STEP 9: bashrc alias設定
-# ============================================================
-log_step "STEP 9: alias設定"
-
-# alias追加対象ファイル
-BASHRC_FILE="$HOME/.bashrc"
-
-# aliasが既に存在するかチェックし、なければ追加
-ALIAS_ADDED=false
-
-# css alias (出陣コマンド)
-if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='cd \"$SCRIPT_DIR\" && ./shutsujin_departure.sh'"
-    if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
-        # alias が存在しない → 新規追加
-        echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（出陣コマンド）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
-        # alias は存在するがパスが異なる → 更新
-        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias css を更新しました（パス変更検出）"
-        else
-            log_warn "alias css の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
-    else
-        log_info "alias css は既に正しく設定されています"
-    fi
-
-    # csm alias (ディレクトリ移動)
-    EXPECTED_CSM="alias csm='cd \"$SCRIPT_DIR\"'"
-    if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        fi
-        echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
-        log_info "alias csm を追加しました（ディレクトリ移動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias csm を更新しました（パス変更検出）"
-        else
-            log_warn "alias csm の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
-    else
-        log_info "alias csm は既に正しく設定されています"
-    fi
-else
-    log_warn "$BASHRC_FILE が見つかりません"
-fi
-
-if [ "$ALIAS_ADDED" = true ]; then
-    log_success "alias設定を追加しました"
-    log_warn "alias を反映するには、以下のいずれかを実行してください："
-    log_info "  1. source ~/.bashrc"
-    log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"
-    log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
-fi
-
-RESULTS+=("alias設定: OK")
-
-# ============================================================
-# STEP 10: Memory MCP セットアップ
-# ============================================================
-log_step "STEP 10: Memory MCP セットアップ"
-
-if command -v claude &> /dev/null; then
-    # Memory MCP が既に設定済みか確認
-    if claude mcp list 2>/dev/null | grep -q "memory"; then
-        log_info "Memory MCP は既に設定済みです"
-        RESULTS+=("Memory MCP: OK (設定済み)")
-    else
-        log_info "Memory MCP を設定中..."
-        if claude mcp add memory \
-            -e MEMORY_FILE_PATH="$SCRIPT_DIR/memory/shogun_memory.jsonl" \
-            -- npx -y @modelcontextprotocol/server-memory 2>/dev/null; then
-            log_success "Memory MCP 設定完了"
-            RESULTS+=("Memory MCP: 設定完了")
-        else
-            log_warn "Memory MCP の設定に失敗しました（手動で設定可能）"
-            RESULTS+=("Memory MCP: 設定失敗 (手動設定可能)")
-        fi
-    fi
-else
-    log_warn "claude コマンドが見つからないため Memory MCP 設定をスキップ"
-    RESULTS+=("Memory MCP: スキップ (claude未インストール)")
-fi
-
-# ============================================================
 # 結果サマリー
 # ============================================================
 echo ""
@@ -611,12 +527,8 @@ echo "  出陣（全エージェント起動）:"
 echo "     ./shutsujin_departure.sh"
 echo ""
 echo "  オプション:"
-echo "     ./shutsujin_departure.sh -s            # セットアップのみ（Claude手動起動）"
-echo "     ./shutsujin_departure.sh -t            # Windows Terminalタブ展開"
-echo "     ./shutsujin_departure.sh -shell bash   # bash用プロンプトで起動"
-echo "     ./shutsujin_departure.sh -shell zsh    # zsh用プロンプトで起動"
-echo ""
-echo "  ※ シェル設定は config/settings.yaml の shell: でも変更可能です"
+echo "     ./shutsujin_departure.sh -s   # セットアップのみ（Claude手動起動）"
+echo "     ./shutsujin_departure.sh -t   # Windows Terminalタブ展開"
 echo ""
 echo "  詳細は README.md を参照してください。"
 echo ""
@@ -624,8 +536,3 @@ echo "  ════════════════════════
 echo "   天下布武！ (Tenka Fubu!)"
 echo "  ════════════════════════════════════════════════════════════════"
 echo ""
-
-# 依存関係不足の場合は exit 1 を返す（install.bat が検知できるように）
-if [ "$HAS_ERROR" = true ]; then
-    exit 1
-fi

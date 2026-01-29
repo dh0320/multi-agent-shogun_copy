@@ -1,0 +1,36 @@
+# multi-agent-shogun 設定ファイル
+language: ja
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CLI設定（GitHub Copilot CLI）
+# ═══════════════════════════════════════════════════════════════════════════════
+cli:
+  default: copilot
+
+cli_configs:
+  claude:
+    command: "claude"
+    default_options:
+      - "--dangerously-skip-permissions"
+  
+  copilot:
+    command: "copilot"
+    default_options:
+      - "--allow-all"
+      - "--allow-all-tools"
+      - "--allow-all-paths"
+
+# スキル設定
+skill:
+  save_path: "~/.claude/skills/shogun-generated/"
+  local_path: "~/multi-agent-shogun/skills/"
+
+# スクリーンショット設定
+screenshot:
+  windows_path: "C:\\Users\\{{USERNAME}}\\Pictures\\Screenshots"
+  path: "/mnt/c/Users/{{USERNAME}}/Pictures/Screenshots"
+
+# ログ設定
+logging:
+  level: info
+  path: "~/multi-agent-shogun/logs/"
