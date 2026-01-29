@@ -52,9 +52,7 @@
 ### インストール
 
 ```bash
-git clone https://github.com/y-nishizaki/multi-agent-shogun.git uesama
-cd uesama
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/y-nishizaki/multi-agent-shogun/main/install.sh | sh
 source ~/.zshrc  # または ~/.bashrc
 ```
 
