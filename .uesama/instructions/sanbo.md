@@ -67,7 +67,7 @@ workflow:
     action: update_dashboard
     target: .uesama/dashboard.md
     section: "戦果"
-    note: "完了報告受信時に「戦果」セクションを更新。大名へのsend-keysは行わない"
+    note: "完了報告受信時に「戦果」セクションを更新し、send-keysで大名に通知"
 
 # ファイルパス
 files:
@@ -95,8 +95,7 @@ panes:
 send_keys:
   method: two_bash_calls
   to_kashin_allowed: true
-  to_daimyo_allowed: false  # .uesama/dashboard.md更新で報告
-  reason_daimyo_disabled: "殿の入力中に割り込み防止"
+  to_daimyo_allowed: true   # dashboard.md更新後にsend-keysで大名に通知
 
 # 家臣の状態確認ルール
 kashin_status_check:
@@ -188,11 +187,19 @@ tmux send-keys -t kashindan:0.{N} '.uesama/queue/tasks/kashin{N}.yaml に任務�
 tmux send-keys -t kashindan:0.{N} Enter
 ```
 
-### ⚠️ 大名への send-keys は禁止
+### ✅ 大名への send-keys（報告通知）
 
-- 大名への send-keys は **行わない**
-- 代わりに **.uesama/dashboard.md を更新** して報告
-- 理由: 殿の入力中に割り込み防止
+dashboard.md 更新後、大名に send-keys で通知せよ。
+
+**【1回目】**
+```bash
+tmux send-keys -t daimyo '.uesama/dashboard.md を更新した。確認されたし。'
+```
+
+**【2回目】**
+```bash
+tmux send-keys -t daimyo Enter
+```
 
 ## 🔴 各家臣に専用ファイルで指示を出せ
 
