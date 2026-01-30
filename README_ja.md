@@ -395,6 +395,68 @@ screenshot:
 
 ---
 
+## 🔀 マルチCLI対応
+
+**multi-agent-shogun** は Claude Code CLI だけでなく、GitHub Copilot CLI もサポートしています。
+
+### サポートされているCLI
+
+| CLI | 特徴 | 推奨用途 |
+|-----|------|---------|
+| **Claude Code CLI** | Opus/Sonnetモデル、MCP統合 | 高度な推論が必要なタスク |
+| **GitHub Copilot CLI** | GitHubネイティブ統合 | GitHub連携が必要なタスク |
+
+### 設定方法
+
+`config/settings.yaml` で各エージェントのCLIを指定：
+
+```yaml
+cli:
+  # 全体のデフォルト
+  default: claude
+
+  # エージェント毎の個別設定（オプション）
+  # agents:
+  #   shogun:
+  #     type: claude
+  #     model: opus
+  #   ashigaru1:
+  #     type: copilot
+```
+
+### コマンドラインから指定
+
+```bash
+# 全エージェントでClaude Code CLI を使用
+./shutsujin_departure.sh --claude
+
+# 全エージェントでGitHub Copilot CLI を使用
+./shutsujin_departure.sh --copilot
+
+# 設定ファイルに従う（デフォルト）
+./shutsujin_departure.sh
+```
+
+### 必要な準備
+
+**Claude Code CLI**:
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**GitHub Copilot CLI**:
+```bash
+# GitHub CLI をインストール（最新版）
+brew install gh  # Mac
+# または
+sudo apt install gh  # Ubuntu
+
+# GitHub にログイン
+gh auth login
+```
+
+---
+
 ## 🎯 設計思想
 
 ### なぜ階層構造（将軍→家老→足軽）なのか

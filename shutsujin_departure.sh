@@ -13,6 +13,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# CLIアダプターを読み込み（存在する場合のみ）
+if [ -f "${SCRIPT_DIR}/lib/cli_adapter.sh" ]; then
+    source "${SCRIPT_DIR}/lib/cli_adapter.sh"
+    CLI_ADAPTER_AVAILABLE=true
+else
+    CLI_ADAPTER_AVAILABLE=false
+fi
+
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"
 if [ -f "./config/settings.yaml" ]; then
@@ -74,6 +82,7 @@ generate_prompt() {
 SETUP_ONLY=false
 OPEN_TERMINAL=false
 SHELL_OVERRIDE=""
+FORCE_CLI=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -83,6 +92,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         -t|--terminal)
             OPEN_TERMINAL=true
+            shift
+            ;;
+        --claude)
+            FORCE_CLI="claude"
+            shift
+            ;;
+        --copilot)
+            FORCE_CLI="copilot"
             shift
             ;;
         -shell|--shell)
@@ -101,15 +118,19 @@ while [[ $# -gt 0 ]]; do
             echo "使用方法: ./shutsujin_departure.sh [オプション]"
             echo ""
             echo "オプション:"
-            echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
+            echo "  -s, --setup-only    tmuxセッションのセットアップのみ（AI CLI起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
+            echo "  --claude            Claude Code CLI を強制使用（設定ファイルを無視）"
+            echo "  --copilot           GitHub Copilot CLI を強制使用（設定ファイルを無視）"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
             echo "                      未指定時は config/settings.yaml の設定を使用"
             echo "  -h, --help          このヘルプを表示"
             echo ""
             echo "例:"
-            echo "  ./shutsujin_departure.sh              # 全エージェント起動（通常の出陣）"
-            echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でClaude起動）"
+            echo "  ./shutsujin_departure.sh              # 設定ファイルに従って起動"
+            echo "  ./shutsujin_departure.sh --claude     # Claude Code CLI で起動"
+            echo "  ./shutsujin_departure.sh --copilot    # GitHub Copilot CLI で起動"
+            echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でCLI起動）"
             echo "  ./shutsujin_departure.sh -t           # 全エージェント起動 + ターミナルタブ展開"
             echo "  ./shutsujin_departure.sh -shell bash  # bash用プロンプトで起動"
             echo "  ./shutsujin_departure.sh -shell zsh   # zsh用プロンプトで起動"
@@ -479,36 +500,118 @@ log_success "  └─ 将軍の本陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: Claude Code 起動（--setup-only でスキップ）
+# STEP 6: AI CLI 起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    # Claude Code CLI の存在チェック
-    if ! command -v claude &> /dev/null; then
-        log_info "⚠️  claude コマンドが見つかりません"
-        echo "  first_setup.sh を再実行してください:"
-        echo "    ./first_setup.sh"
-        exit 1
+    if [ "$CLI_ADAPTER_AVAILABLE" = true ]; then
+        # ═══════════════════════════════════════════════════════════════════════════
+        # マルチCLI対応モード
+        # ═══════════════════════════════════════════════════════════════════════════
+        CONFIG_FILE="./config/settings.yaml"
+
+        log_war "👑 全軍にAI CLIを召喚中..."
+
+        # 将軍
+        log_info "  ├─ 将軍を召喚中..."
+
+        if [ -n "$FORCE_CLI" ]; then
+            SHOGUN_CLI="$FORCE_CLI"
+        else
+            SHOGUN_CLI=$(get_cli_type "shogun" "$CONFIG_FILE")
+        fi
+
+        if ! validate_cli_availability "$SHOGUN_CLI"; then
+            echo "  将軍のCLI ($SHOGUN_CLI) が利用できません"
+            exit 1
+        fi
+
+        SHOGUN_CMD=$(build_cli_command "shogun" "$SHOGUN_CLI" "$CONFIG_FILE")
+
+        # 将軍固有の環境変数設定（従来通り）
+        if [ "$SHOGUN_CLI" = "claude" ]; then
+            if ! echo "$SHOGUN_CMD" | grep -q "MAX_THINKING_TOKENS"; then
+                SHOGUN_CMD="MAX_THINKING_TOKENS=0 $SHOGUN_CMD"
+            fi
+            if ! echo "$SHOGUN_CMD" | grep -q -- "--model"; then
+                SHOGUN_CMD=$(echo "$SHOGUN_CMD" | sed 's/claude /claude --model opus /')
+            fi
+        fi
+
+        tmux send-keys -t shogun "$SHOGUN_CMD"
+        tmux send-keys -t shogun Enter
+
+        if [ "$SHOGUN_CLI" = "copilot" ]; then
+            log_info "  │  └─ 将軍、召喚完了 ⚡ (GitHub Copilot CLI)"
+            # Copilot用指示書を生成
+            generate_copilot_instructions "shogun" "./instructions" "./.github/copilot-instructions-shogun.md" 2>/dev/null || true
+        else
+            log_info "  │  └─ 将軍、召喚完了 🧠 (Claude Code CLI)"
+        fi
+
+        sleep 1
+
+        # 家老 + 足軽（9ペイン）
+        log_info "  ├─ 家老・足軽を召喚中..."
+        AGENT_NAMES=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
+
+        for i in {0..8}; do
+            AGENT_NAME="${AGENT_NAMES[$i]}"
+
+            if [ -n "$FORCE_CLI" ]; then
+                AGENT_CLI="$FORCE_CLI"
+            else
+                AGENT_CLI=$(get_cli_type "$AGENT_NAME" "$CONFIG_FILE")
+            fi
+
+            if ! validate_cli_availability "$AGENT_CLI"; then
+                echo "  $AGENT_NAME のCLI ($AGENT_CLI) が利用できません"
+                exit 1
+            fi
+
+            AGENT_CMD=$(build_cli_command "$AGENT_NAME" "$AGENT_CLI" "$CONFIG_FILE")
+
+            tmux send-keys -t "multiagent:0.$i" "$AGENT_CMD"
+            tmux send-keys -t "multiagent:0.$i" Enter
+
+            # Copilot用指示書を生成
+            if [ "$AGENT_CLI" = "copilot" ]; then
+                generate_copilot_instructions "$AGENT_NAME" "./instructions" "./.github/copilot-instructions-${AGENT_NAME}.md" 2>/dev/null || true
+            fi
+        done
+
+        log_info "  └─ 家老・足軽、召喚完了"
+        log_success "✅ 全軍 AI CLI 起動完了"
+        echo ""
+    else
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 従来モード（後方互換）
+        # ═══════════════════════════════════════════════════════════════════════════
+        if ! command -v claude &> /dev/null; then
+            log_info "⚠️  claude コマンドが見つかりません"
+            echo "  first_setup.sh を再実行してください:"
+            echo "    ./first_setup.sh"
+            exit 1
+        fi
+
+        log_war "👑 全軍に Claude Code を召喚中..."
+
+        # 将軍
+        tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t shogun Enter
+        log_info "  └─ 将軍、召喚完了"
+
+        sleep 1
+
+        # 家老 + 足軽（9ペイン）
+        for i in {0..8}; do
+            tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
+            tmux send-keys -t "multiagent:0.$i" Enter
+        done
+        log_info "  └─ 家老・足軽、召喚完了"
+
+        log_success "✅ 全軍 Claude Code 起動完了"
+        echo ""
     fi
-
-    log_war "👑 全軍に Claude Code を召喚中..."
-
-    # 将軍
-    tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
-    tmux send-keys -t shogun Enter
-    log_info "  └─ 将軍、召喚完了"
-
-    # 少し待機（安定のため）
-    sleep 1
-
-    # 家老 + 足軽（9ペイン）
-    for i in {0..8}; do
-        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
-        tmux send-keys -t "multiagent:0.$i" Enter
-    done
-    log_info "  └─ 家老・足軽、召喚完了"
-
-    log_success "✅ 全軍 Claude Code 起動完了"
-    echo ""
 
     # ═══════════════════════════════════════════════════════════════════════════
     # STEP 6.5: 各エージェントに指示書を読み込ませる

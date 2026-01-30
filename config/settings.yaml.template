@@ -1,0 +1,35 @@
+# multi-agent-shogun 設定ファイル
+language: ja
+shell: bash
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CLI設定（GitHub Copilot CLI対応）
+# ═══════════════════════════════════════════════════════════════════════════════
+cli:
+  # デフォルトCLI（claude または copilot）
+  default: claude
+
+  # エージェント毎の個別設定（オプション）
+  # agents:
+  #   shogun:
+  #     type: claude
+  #     model: opus
+  #     env:
+  #       MAX_THINKING_TOKENS: "0"
+  #   ashigaru1:
+  #     type: copilot
+
+# スキル設定
+skill:
+  save_path: "~/.claude/skills/"
+  local_path: "~/multi-agent-shogun/skills/"
+
+# スクリーンショット設定
+screenshot:
+  windows_path: "C:\\Users\\{{USERNAME}}\\Pictures\\Screenshots"
+  path: "/mnt/c/Users/{{USERNAME}}/Pictures/Screenshots"
+
+# ログ設定
+logging:
+  level: info
+  path: "~/multi-agent-shogun/logs/"
