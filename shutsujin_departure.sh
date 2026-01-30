@@ -580,7 +580,13 @@ if [ "$SETUP_ONLY" = false ]; then
         done
 
         log_info "  └─ 家老・足軽、召喚完了"
-        log_success "✅ 全軍 AI CLI 起動完了"
+
+        # CLIタイプに応じた起動完了メッセージ
+        if [ "$SHOGUN_CLI" = "copilot" ]; then
+            log_success "✅ 全軍 GitHub Copilot CLI 起動完了"
+        else
+            log_success "✅ 全軍 Claude Code CLI 起動完了"
+        fi
         echo ""
     else
         # ═══════════════════════════════════════════════════════════════════════════
@@ -592,6 +598,9 @@ if [ "$SETUP_ONLY" = false ]; then
             echo "    ./first_setup.sh"
             exit 1
         fi
+
+        # 従来モードでは常にClaude Code CLIを使用
+        SHOGUN_CLI="claude"
 
         log_war "👑 全軍に Claude Code を召喚中..."
 
@@ -684,12 +693,21 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  Claude Code の起動を待機中（最大30秒）..."
+    # CLIタイプに応じた起動待機メッセージ
+    if [ "$SHOGUN_CLI" = "copilot" ]; then
+        echo "  GitHub Copilot CLI の起動を待機中（最大30秒）..."
+    else
+        echo "  Claude Code CLI の起動を待機中（最大30秒）..."
+    fi
 
     # 将軍の起動を確認（最大30秒待機）
     for i in {1..30}; do
         if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
-            echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
+            if [ "$SHOGUN_CLI" = "copilot" ]; then
+                echo "  └─ 将軍の GitHub Copilot CLI 起動確認完了（${i}秒）"
+            else
+                echo "  └─ 将軍の Claude Code CLI 起動確認完了（${i}秒）"
+            fi
             break
         fi
         sleep 1
@@ -761,17 +779,43 @@ echo "  ╚═══════════════════════
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
-    echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
-    echo ""
-    echo "  手動でClaude Codeを起動するには:"
-    echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  # 将軍を召喚                                            │"
-    echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
-    echo "  │                                                          │"
-    echo "  │  # 家老・足軽を一斉召喚                                   │"
-    echo "  │  for i in {0..8}; do \\                                   │"
-    echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
-    echo "  │      'claude --dangerously-skip-permissions' Enter       │"
+    # セットアップのみモードでもCLIタイプを判定
+    if [ -z "$SHOGUN_CLI" ]; then
+        if [ -n "$FORCE_CLI" ]; then
+            SHOGUN_CLI="$FORCE_CLI"
+        elif [ "$CLI_ADAPTER_AVAILABLE" = true ] && [ -f "./config/settings.yaml" ]; then
+            SHOGUN_CLI=$(get_cli_type "shogun" "./config/settings.yaml")
+        else
+            SHOGUN_CLI="claude"
+        fi
+    fi
+
+    # CLIタイプに応じたメッセージ
+    if [ "$SHOGUN_CLI" = "copilot" ]; then
+        echo "  ⚠️  セットアップのみモード: GitHub Copilot CLIは未起動です"
+        echo ""
+        echo "  手動でGitHub Copilot CLIを起動するには:"
+        echo "  ┌──────────────────────────────────────────────────────────┐"
+        echo "  │  # 将軍を召喚                                            │"
+        echo "  │  tmux send-keys -t shogun 'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
+        echo "  │                                                          │"
+        echo "  │  # 家老・足軽を一斉召喚                                   │"
+        echo "  │  for i in {0..8}; do \\                                   │"
+        echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
+        echo "  │      'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
+    else
+        echo "  ⚠️  セットアップのみモード: Claude Code CLIは未起動です"
+        echo ""
+        echo "  手動でClaude Code CLIを起動するには:"
+        echo "  ┌──────────────────────────────────────────────────────────┐"
+        echo "  │  # 将軍を召喚                                            │"
+        echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
+        echo "  │                                                          │"
+        echo "  │  # 家老・足軽を一斉召喚                                   │"
+        echo "  │  for i in {0..8}; do \\                                   │"
+        echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
+        echo "  │      'claude --dangerously-skip-permissions' Enter       │"
+    fi
     echo "  │  done                                                    │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
