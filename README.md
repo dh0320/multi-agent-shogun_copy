@@ -401,6 +401,47 @@ Skills can be invoked with `/skill-name`. Just tell the Shogun: "run `/skill-nam
 
 ---
 
+## 🔀 Multi-CLI Support
+
+**multi-agent-shogun** supports both Claude Code CLI and GitHub Copilot CLI.
+
+### Supported CLIs
+
+| CLI | Features | Recommended Use Case |
+|-----|----------|---------------------|
+| **Claude Code CLI** | Opus/Sonnet models, MCP integration | Tasks requiring advanced reasoning |
+| **GitHub Copilot CLI** | Native GitHub integration | Tasks requiring GitHub integration |
+
+### Configuration
+
+Specify CLI for each agent in `config/settings.yaml`:
+
+```yaml
+cli:
+  default: claude
+  # agents:
+  #   shogun:
+  #     type: claude
+  #     model: opus
+```
+
+### Command-Line Flags
+
+```bash
+# Use Claude Code CLI
+./shutsujin_departure.sh --claude
+
+# Use GitHub Copilot CLI
+./shutsujin_departure.sh --copilot
+```
+
+### Prerequisites
+
+- **Claude Code CLI**: `npm install -g @anthropic-ai/claude-code`
+- **GitHub Copilot CLI**: Install GitHub CLI and run `gh auth login`
+
+---
+
 ## 🏛️ Design Philosophy
 
 ### Why Hierarchical Structure?
