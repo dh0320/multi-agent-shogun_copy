@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          find . -name '*.sh' -o -name 'uesama' -o -name 'uesama-*' | \
+            grep -v '.git/' | \
+            xargs shellcheck --severity=warning
+
+      - name: Check shell script syntax
+        run: |
+          find . -name '*.sh' -o -name 'uesama' -o -name 'uesama-*' | \
+            grep -v '.git/' | \
+            xargs -I{} bash -n {}
+
+  actionlint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install actionlint
+        run: |
+          ACTIONLINT_VERSION="1.7.7"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | \
+            tar xz -C /usr/local/bin actionlint
+
+      - name: Lint GitHub Actions workflows
+        run: actionlint
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: |
+          chmod +x tests/run_tests.sh
+          bash tests/run_tests.sh
+
+  test-tmux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tmux
+        run: sudo apt-get install -y tmux
+
+      - name: Run tmux integration tests
+        run: |
+          chmod +x tests/test_tmux_integration.sh
+          bash tests/test_tmux_integration.sh

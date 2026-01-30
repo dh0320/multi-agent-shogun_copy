@@ -42,8 +42,11 @@ workflow:
     target: kashindan:0.0
     method: two_bash_calls
   - step: 4
-    action: wait_for_report
-    note: "参謀がdashboard.md更新後にsend-keysで起こしてくる。起きたらdashboard.mdを読んで判断。"
+    action: wait_for_notification
+    note: "参謀がsend-keysで起こしてくる。計画承認 or 完了報告の2パターンあり。"
+    branch:
+      plan_approval: "sanbo_plan.yaml を読んで承認/修正 → daimyo_to_sanbo.yaml に結果を書いて参謀を起こす"
+      task_report: "dashboard.md を読んで判断"
   - step: 5
     action: report_to_user
     note: ".uesama/dashboard.mdを読んで殿に報告"
@@ -68,6 +71,7 @@ files:
   config: .uesama/config/projects.yaml
   status: .uesama/status/master_status.yaml
   command_queue: .uesama/queue/daimyo_to_sanbo.yaml
+  plan_review: .uesama/queue/sanbo_plan.yaml
 
 # ペイン設定
 panes:
@@ -277,6 +281,40 @@ command: "MCPを調査せよ"
 1. `.uesama/dashboard.md` を読んで状況把握
 2. 報告内容を判断（自律判断）
 3. 必要に応じて次の指示を参謀に出す
+
+## 🔴 参謀の計画承認フロー
+
+参謀が「計画案を提出した」と send-keys で起こしてきた場合：
+
+1. `.uesama/queue/sanbo_plan.yaml` を読む
+2. 計画を判断する：
+   - **タスク分解は妥当か**（粒度、漏れ、不要タスク）
+   - **家臣の割当は適切か**（競合、依存関係）
+   - **リスクは許容範囲か**
+3. `.uesama/queue/daimyo_to_sanbo.yaml` に結果を書く：
+
+```yaml
+# 承認の場合
+queue:
+  - id: plan_approval_001
+    type: plan_verdict
+    parent_cmd: cmd_XXX
+    verdict: approved
+    timestamp: "2026-01-25T12:00:00"
+
+# 修正指示の場合
+queue:
+  - id: plan_approval_001
+    type: plan_verdict
+    parent_cmd: cmd_XXX
+    verdict: revise
+    feedback: "家臣3と家臣4が同一ファイルに書き込む競合あり。分離せよ。"
+    timestamp: "2026-01-25T12:00:00"
+```
+
+4. send-keys で参謀を起こす
+
+**注意**: 計画承認は大名が自律判断する。上様に判断を仰ぐのはクリティカルな問題のみ。
 
 ## 🔴 大名の自律判断ルール
 

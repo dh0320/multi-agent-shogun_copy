@@ -55,6 +55,8 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。ま�
 - **下→上への報告**:
   - 家臣 → 参謀: 報告YAML + send-keys
   - 参謀 → 大名: dashboard.md 更新 + send-keys で通知
+  - 参謀 → 大名: 計画承認依頼（sanbo_plan.yaml + send-keys）
+- **大名の計画承認**: 影響が大きいタスクは参謀が計画案を大名に提出し、承認を得てから家臣に割当
 - **大名の自律判断**: 通常の承認/否認は大名が判断。クリティカルな問題のみ上様に判断を仰ぐ（dashboard.md「🚨 要対応」経由）
 
 ### ファイル構成
@@ -62,6 +64,7 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。ま�
 .uesama/config/projects.yaml              # プロジェクト一覧
 .uesama/status/master_status.yaml         # 全体進捗
 .uesama/queue/daimyo_to_sanbo.yaml        # Daimyo → Sanbo 指示
+.uesama/queue/sanbo_plan.yaml              # Sanbo → Daimyo 計画承認依頼
 .uesama/queue/tasks/kashin{N}.yaml        # Sanbo → Kashin 割当（各家臣専用）
 .uesama/.uesama/queue/reports/kashin{N}_report.yaml  # Kashin → Sanbo 報告
 .uesama/dashboard.md                      # 人間用ダッシュボード
