@@ -4,6 +4,9 @@ claude-shogun-orders.md
 # Claude Code settings
 .claude/
 
+# Copilot instructions (generated at runtime)
+.github/copilot-instructions-*.md
+
 # Test outputs (generated during testing)
 test_output/
 

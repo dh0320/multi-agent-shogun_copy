@@ -294,6 +294,57 @@ else
 fi
 
 # ============================================================
+# STEP 4.5: GitHub Copilot CLI 確認（オプション）
+# ============================================================
+log_step "STEP 4.5: GitHub Copilot CLI 確認（オプション）"
+
+echo "  GitHub Copilot CLI は multi-agent-shogun で使用可能なオプションのCLIです。"
+echo "  Claude Code CLIの代わりに、またはClaude Code CLIと併用できます。"
+echo ""
+
+if command -v gh &> /dev/null; then
+    log_success "GitHub CLI (gh) がインストールされています"
+    gh --version | head -1
+
+    # Copilot CLI の確認
+    if command -v copilot &> /dev/null; then
+        log_success "GitHub Copilot CLI がインストールされています"
+        copilot --version | head -1
+        RESULTS+=("GitHub Copilot CLI: インストール済み")
+
+        # GitHub認証の確認
+        if gh auth status &> /dev/null; then
+            log_success "GitHub に認証済みです"
+            RESULTS+=("GitHub認証: OK")
+        else
+            log_warn "GitHub に認証されていません"
+            echo "  認証するには: gh auth login"
+            RESULTS+=("GitHub認証: 未認証")
+        fi
+    else
+        log_info "GitHub Copilot CLI が見つかりません（オプション）"
+        echo ""
+        echo "  【インストール方法】"
+        echo "  GitHub Copilot CLI は GitHub CLI の一部として提供されています。"
+        echo "  最新のGitHub CLIを使用してください。"
+        echo ""
+        RESULTS+=("GitHub Copilot CLI: 未インストール（オプション）")
+    fi
+else
+    log_info "GitHub CLI (gh) がインストールされていません（オプション）"
+    echo ""
+    echo "  【インストール方法】"
+    echo "  GitHub Copilot CLI を使用するには、まず GitHub CLI が必要です。"
+    echo ""
+    echo "  インストールコマンド:"
+    echo "     brew install gh  # Mac"
+    echo "     # または"
+    echo "     sudo apt install gh  # Ubuntu/Debian"
+    echo ""
+    RESULTS+=("GitHub CLI/Copilot CLI: 未インストール（オプション）")
+fi
+
+# ============================================================
 # STEP 5: ディレクトリ構造作成
 # ============================================================
 log_step "STEP 5: ディレクトリ構造作成"
@@ -306,6 +357,7 @@ DIRECTORIES=(
     "status"
     "instructions"
     "logs"
+    "lib"
     "demo_output"
     "skills"
     "memory"
@@ -341,34 +393,42 @@ log_step "STEP 6: 設定ファイル確認"
 # config/settings.yaml
 if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     log_info "config/settings.yaml を作成中..."
-    cat > "$SCRIPT_DIR/config/settings.yaml" << EOF
+
+    # テンプレートが存在すればそれを使用
+    if [ -f "$SCRIPT_DIR/config/settings.yaml.template" ]; then
+        cp "$SCRIPT_DIR/config/settings.yaml.template" "$SCRIPT_DIR/config/settings.yaml"
+        # パス変数を置換
+        sed -i.bak "s|\$SCRIPT_DIR|$SCRIPT_DIR|g" "$SCRIPT_DIR/config/settings.yaml"
+        rm -f "$SCRIPT_DIR/config/settings.yaml.bak"
+        log_success "settings.yaml をテンプレートから作成しました"
+    else
+        # テンプレートがない場合は従来のロジックで生成
+        cat > "$SCRIPT_DIR/config/settings.yaml" << EOF
 # multi-agent-shogun 設定ファイル
-
-# 言語設定
-# ja: 日本語（戦国風日本語のみ、併記なし）
-# en: 英語（戦国風日本語 + 英訳併記）
-# その他の言語コード（es, zh, ko, fr, de 等）も対応
 language: ja
-
-# シェル設定
-# bash: bash用プロンプト（デフォルト）
-# zsh: zsh用プロンプト
 shell: bash
+
+# CLI設定（デフォルト: claude）
+cli:
+  default: claude
 
 # スキル設定
 skill:
-  # スキル保存先（スキル名に shogun- プレフィックスを付けて保存）
   save_path: "~/.claude/skills/"
-
-  # ローカルスキル保存先（このプロジェクト専用）
   local_path: "$SCRIPT_DIR/skills/"
+
+# スクリーンショット設定
+screenshot:
+  windows_path: "C:\\Users\\{{USERNAME}}\\Pictures\\Screenshots"
+  path: "/mnt/c/Users/{{USERNAME}}/Pictures/Screenshots"
 
 # ログ設定
 logging:
-  level: info  # debug | info | warn | error
+  level: info
   path: "$SCRIPT_DIR/logs/"
 EOF
-    log_success "settings.yaml を作成しました"
+        log_success "settings.yaml を作成しました"
+    fi
 else
     log_info "config/settings.yaml は既に存在します"
 fi
