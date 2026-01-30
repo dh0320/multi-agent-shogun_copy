@@ -1,4 +1,4 @@
-# multi-agent-shogun
+# multi-agent-kairai
 
 <div align="center">
 
@@ -18,7 +18,7 @@
 
 ## これは何？
 
-**multi-agent-shogun** は、複数の Claude Code インスタンスを同時に実行し、戦国時代の軍制のように統率するシステムです。
+**multi-agent-kairai** は、複数の Claude Code インスタンスを同時に実行し、宮廷の階層構造のように統率するシステムです。
 
 **なぜ使うのか？**
 - 1つの命令で、8体のAIワーカーが並列で実行
@@ -27,21 +27,21 @@
 - ダッシュボードでリアルタイム進捗確認
 
 ```
-      あなた（上様）
+      あなた（女皇陛下）
            │
            ▼ 命令を出す
     ┌─────────────┐
-    │   SHOGUN    │  ← 命令を受け取り、即座に委譲
+    │   KAIRAI    │  ← 傀儡/KAIRAI（執行官）
     └──────┬──────┘
            │ YAMLファイル + tmux
     ┌──────▼──────┐
-    │    KARO     │  ← タスクをワーカーに分配
+    │   PULONIA   │  ← プロンニア/Pulonia（執事）
     └──────┬──────┘
            │
   ┌─┬─┬─┬─┴─┬─┬─┬─┐
   │1│2│3│4│5│6│7│8│  ← 8体のワーカーが並列実行
   └─┴─┴─┴─┴─┴─┴─┴─┘
-      ASHIGARU
+       BOSCO
 ```
 
 ---
@@ -61,9 +61,9 @@
 
 📥 **リポジトリをダウンロード**
 
-[ZIPダウンロード](https://github.com/yohey-w/multi-agent-shogun/archive/refs/heads/main.zip) して `C:\tools\multi-agent-shogun` に展開
+[ZIPダウンロード](https://github.com/yohey-w/multi-agent-kairai/archive/refs/heads/main.zip) して `C:\tools\multi-agent-kairai` に展開
 
-*または git を使用:* `git clone https://github.com/yohey-w/multi-agent-shogun.git C:\tools\multi-agent-shogun`
+*または git を使用:* `git clone https://github.com/yohey-w/multi-agent-kairai.git C:\tools\multi-agent-kairai`
 
 </td>
 </tr>
@@ -92,7 +92,7 @@
 🐧 **Ubuntu を開いて以下を実行**（初回のみ）
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
+cd /mnt/c/tools/multi-agent-kairai
 ./first_setup.sh
 ```
 
@@ -106,10 +106,10 @@ cd /mnt/c/tools/multi-agent-shogun
 </td>
 <td>
 
-✅ **出陣！**
+✅ **任務開始！**
 
 ```bash
-./shutsujin_departure.sh
+./mission_start.sh
 ```
 
 </td>
@@ -121,8 +121,8 @@ cd /mnt/c/tools/multi-agent-shogun
 **Ubuntuターミナル**（WSL）を開いて実行：
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
-./shutsujin_departure.sh
+cd /mnt/c/tools/multi-agent-kairai
+./mission_start.sh
 ```
 
 ---
@@ -134,8 +134,8 @@ cd /mnt/c/tools/multi-agent-shogun
 
 ```bash
 # 1. リポジトリをクローン
-git clone https://github.com/yohey-w/multi-agent-shogun.git ~/multi-agent-shogun
-cd ~/multi-agent-shogun
+git clone https://github.com/yohey-w/multi-agent-kairai.git ~/multi-agent-kairai
+cd ~/multi-agent-kairai
 
 # 2. スクリプトに実行権限を付与
 chmod +x *.sh
@@ -147,8 +147,8 @@ chmod +x *.sh
 ### 毎日の起動
 
 ```bash
-cd ~/multi-agent-shogun
-./shutsujin_departure.sh
+cd ~/multi-agent-kairai
+./mission_start.sh
 ```
 
 </details>
@@ -181,21 +181,21 @@ wsl --install
 ---
 
 <details>
-<summary>📋 <b>スクリプトリファレンス</b>（クリックで展開）</summary>
+<summary>🎩 <b>スクリプトリファレンス</b>（クリックで展開）</summary>
 
 | スクリプト | 用途 | 実行タイミング |
 |-----------|------|---------------|
 | `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
 | `first_setup.sh` | tmux、Node.js、Claude Code CLI をインストール | 初回のみ |
-| `shutsujin_departure.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み | 毎日 |
+| `mission_start.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み | 毎日 |
 
 ### `install.bat` が自動で行うこと：
 - ✅ WSL2がインストールされているかチェック（未インストールなら案内）
 - ✅ Ubuntuがインストールされているかチェック（未インストールなら案内）
 - ✅ 次のステップ（`first_setup.sh` の実行方法）を案内
 
-### `shutsujin_departure.sh` が行うこと：
-- ✅ tmuxセッションを作成（shogun + multiagent）
+### `mission_start.sh` が行うこと：
+- ✅ tmuxセッションを作成（kairai + multiagent）
 - ✅ 全エージェントでClaude Codeを起動
 - ✅ 各エージェントに指示書を自動読み込み
 - ✅ キューファイルをリセットして新しい状態に
@@ -228,42 +228,42 @@ wsl --install
 
 | エージェント | 役割 | 数 |
 |-------------|------|-----|
-| 🏯 将軍（Shogun） | 総大将 - あなたの命令を受ける | 1 |
-| 📋 家老（Karo） | 管理者 - タスクを分配 | 1 |
-| ⚔️ 足軽（Ashigaru） | ワーカー - 並列でタスク実行 | 8 |
+| 🫖 傀儡/KAIRAI（執行官） | 総大将 - あなたの命令を受ける | 1 |
+| 🎩 プロンニア/Pulonia（執事） | 管理者 - タスクを分配 | 1 |
+| 🤖 ボスコ/Bosco（機動兵） | ワーカー - 並列でタスク実行 | 8 |
 
 tmuxセッションが作成されます：
-- `shogun` - ここに接続してコマンドを出す
+- `kairai` - ここに接続してコマンドを出す
 - `multiagent` - ワーカーがバックグラウンドで稼働
 
 ---
 
 ## 📖 基本的な使い方
 
-### Step 1: 将軍に接続
+### Step 1: 傀儡/KAIRAI（執行官）に接続
 
-`shutsujin_departure.sh` 実行後、全エージェントが自動的に指示書を読み込み、作業準備完了となります。
+`mission_start.sh` 実行後、全エージェントが自動的に指示書を読み込み、作業準備完了となります。
 
-新しいターミナルを開いて将軍に接続：
+新しいターミナルを開いて傀儡/KAIRAI（執行官）に接続：
 
 ```bash
-tmux attach-session -t shogun
+tmux attach-session -t kairai
 ```
 
 ### Step 2: 最初の命令を出す
 
-将軍は既に初期化済み！そのまま命令を出せます：
+傀儡/KAIRAI（執行官）は既に初期化済み！そのまま命令を出せます：
 
 ```
 JavaScriptフレームワーク上位5つを調査して比較表を作成せよ
 ```
 
-将軍は：
+傀儡/KAIRAI（執行官）は：
 1. タスクをYAMLファイルに書き込む
-2. 家老（管理者）に通知
+2. プロンニア/Pulonia（執事）（管理者）に通知
 3. 即座にあなたに制御を返す（待つ必要なし！）
 
-その間、家老はタスクを足軽ワーカーに分配し、並列実行します。
+その間、プロンニア/Pulonia（執事）はタスクをボスコ/Bosco（機動兵）ワーカーに分配し、並列実行します。
 
 ### Step 3: 進捗を確認
 
@@ -273,9 +273,9 @@ JavaScriptフレームワーク上位5つを調査して比較表を作成せよ
 ## 進行中
 | ワーカー | タスク | 状態 |
 |----------|--------|------|
-| 足軽 1 | React調査 | 実行中 |
-| 足軽 2 | Vue調査 | 実行中 |
-| 足軽 3 | Angular調査 | 完了 |
+| ボスコ/Bosco（機動兵） 1 | React調査 | 実行中 |
+| ボスコ/Bosco（機動兵） 2 | Vue調査 | 実行中 |
+| ボスコ/Bosco（機動兵） 3 | Angular調査 | 完了 |
 ```
 
 ---
@@ -288,16 +288,16 @@ JavaScriptフレームワーク上位5つを調査して比較表を作成せよ
 
 ```
 あなた: 「5つのMCPサーバを調査せよ」
-→ 5体の足軽が同時に調査開始
+→ 5体のボスコ/Bosco（機動兵）が同時に調査開始
 → 数時間ではなく数分で結果が出る
 ```
 
 ### 🔄 2. ノンブロッキングワークフロー
 
-将軍は即座に委譲して、あなたに制御を返します：
+傀儡/KAIRAI（執行官）は即座に委譲して、あなたに制御を返します：
 
 ```
-あなた: 命令 → 将軍: 委譲 → あなた: 次の命令をすぐ出せる
+あなた: 命令 → 傀儡/KAIRAI（執行官）: 委譲 → あなた: 次の命令をすぐ出せる
                                     ↓
                     ワーカー: バックグラウンドで実行
                                     ↓
@@ -332,7 +332,7 @@ VSCode拡張のClaude Codeはスクショを貼り付けて事象を説明でき
 screenshot:
   path: "/mnt/c/Users/あなたの名前/Pictures/Screenshots"
 
-# 将軍に伝えるだけ:
+# 傀儡/KAIRAI（執行官）に伝えるだけ:
 あなた: 「最新のスクショを見ろ」
 あなた: 「スクショ2枚見ろ」
 → AIが即座にスクリーンショットを読み取って分析
@@ -351,12 +351,12 @@ screenshot:
 
 | レイヤー | 場所 | 用途 |
 |---------|------|------|
-| Memory MCP | `memory/shogun_memory.jsonl` | セッションを跨ぐ長期記憶 |
-| グローバル | `memory/global_context.md` | システム全体の設定、殿の好み |
+| Memory MCP | `memory/kairai_memory.jsonl` | セッションを跨ぐ長期記憶 |
+| グローバル | `memory/global_context.md` | システム全体の設定、女皇陛下の好み |
 | プロジェクト | `context/{project}.md` | プロジェクト固有の知見 |
 
 この設計により：
-- どの足軽でも任意のプロジェクトを担当可能
+- どのボスコ/Bosco（機動兵）でも任意のプロジェクトを担当可能
 - エージェント切り替え時もコンテキスト継続
 - 関心の分離が明確
 
@@ -382,35 +382,35 @@ screenshot:
 
 | エージェント | モデル | 思考モード | 理由 |
 |-------------|--------|----------|------|
-| 将軍 | Opus | 無効 | 委譲とダッシュボード更新に深い推論は不要 |
-| 家老 | デフォルト | 有効 | タスク分配には慎重な判断が必要 |
-| 足軽 | デフォルト | 有効 | 実装作業にはフル機能が必要 |
+| 傀儡/KAIRAI（執行官） | Opus | 無効 | 委譲とダッシュボード更新に深い推論は不要 |
+| プロンニア/Pulonia（執事） | デフォルト | 有効 | タスク分配には慎重な判断が必要 |
+| ボスコ/Bosco（機動兵） | デフォルト | 有効 | 実装作業にはフル機能が必要 |
 
-将軍は `MAX_THINKING_TOKENS=0` で拡張思考を無効化し、高レベルな判断にはOpusの能力を維持しつつ、レイテンシとコストを削減。
+傀儡/KAIRAI（執行官）は `MAX_THINKING_TOKENS=0` で拡張思考を無効化し、高レベルな判断にはOpusの能力を維持しつつ、レイテンシとコストを削減。
 
 ---
 
 ## 🎯 設計思想
 
-### なぜ階層構造（将軍→家老→足軽）なのか
+### なぜ階層構造（傀儡/KAIRAI（執行官）→プロンニア/Pulonia（執事）→ボスコ/Bosco（機動兵））なのか
 
 1. **単一責任**: 各役割が明確に分離され、混乱しない
-2. **スケーラビリティ**: 足軽を増やしても構造が崩れない
-3. **障害分離**: 1体の足軽が失敗しても他に影響しない
-4. **人間への報告一元化**: 将軍だけが人間とやり取りするため、情報が整理される
+2. **スケーラビリティ**: ボスコ/Bosco（機動兵）を増やしても構造が崩れない
+3. **障害分離**: 1体のボスコ/Bosco（機動兵）が失敗しても他に影響しない
+4. **人間への報告一元化**: 傀儡/KAIRAI（執行官）だけが人間とやり取りするため、情報が整理される
 
 ### なぜ YAML + send-keys なのか
 
 1. **ポーリング不要**: イベント駆動でAPIコストを削減
 2. **状態の永続化**: YAMLファイルでタスク状態を追跡可能
 3. **デバッグ容易**: 人間がYAMLを直接読んで状況把握できる
-4. **競合回避**: 各足軽に専用ファイルを割り当て
+4. **競合回避**: 各ボスコ/Bosco（機動兵）に専用ファイルを割り当て
 
-### なぜ dashboard.md は家老のみが更新するのか
+### なぜ dashboard.md はプロンニア/Pulonia（執事）のみが更新するのか
 
 1. **単一更新者**: 競合を防ぐため、更新責任者を1人に限定
-2. **情報集約**: 家老は全足軽の報告を受ける立場なので全体像を把握
-3. **割り込み防止**: 将軍が更新すると、殿の入力中に割り込む恐れあり
+2. **情報集約**: プロンニア/Pulonia（執事）は全ボスコ/Bosco（機動兵）の報告を受ける立場なので全体像を把握
+3. **割り込み防止**: 傀儡/KAIRAI（執行官）が更新すると、女皇陛下の入力中に割り込む恐れあり
 
 ---
 
@@ -419,7 +419,7 @@ screenshot:
 初期状態ではスキルはありません。
 運用中にダッシュボード（dashboard.md）の「スキル化候補」から承認して増やしていきます。
 
-スキルは `/スキル名` で呼び出し可能。将軍に「/スキル名 を実行」と伝えるだけ。
+スキルは `/スキル名` で呼び出し可能。傀儡/KAIRAI（執行官）に「/スキル名 を実行」と伝えるだけ。
 
 ### スキルの思想
 
@@ -432,13 +432,13 @@ screenshot:
 **2. スキル取得の手順**
 
 ```
-足軽が作業中にパターンを発見
+ボスコ/Bosco（機動兵）が作業中にパターンを発見
     ↓
 dashboard.md の「スキル化候補」に上がる
     ↓
-殿（あなた）が内容を確認
+女皇陛下（あなた）が内容を確認
     ↓
-承認すれば家老に指示してスキルを作成
+承認すればプロンニア/Pulonia（執事）に指示してスキルを作成
 ```
 
 スキルはユーザ主導で増やすもの。自動で増えると管理不能になるため、「これは便利」と判断したものだけを残す。
@@ -475,7 +475,7 @@ claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=your_pat_here -- npx -y @m
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
 
 # 5. Memory - セッション間の長期記憶（推奨！）
-claude mcp add memory -e MEMORY_FILE_PATH="$PWD/memory/shogun_memory.jsonl" -- npx -y @modelcontextprotocol/server-memory
+claude mcp add memory -e MEMORY_FILE_PATH="$PWD/memory/kairai_memory.jsonl" -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ### インストール確認
@@ -496,13 +496,13 @@ claude mcp list
 あなた: 「AIコーディングアシスタント上位5つを調査して比較せよ」
 
 実行される処理:
-1. 将軍が家老に委譲
-2. 家老が割り当て:
-   - 足軽1: GitHub Copilotを調査
-   - 足軽2: Cursorを調査
-   - 足軽3: Claude Codeを調査
-   - 足軽4: Codeiumを調査
-   - 足軽5: Amazon CodeWhispererを調査
+1. 傀儡/KAIRAI（執行官）がプロンニア/Pulonia（執事）に委譲
+2. プロンニア/Pulonia（執事）が割り当て:
+   - ボスコ/Bosco（機動兵）1: GitHub Copilotを調査
+   - ボスコ/Bosco（機動兵）2: Cursorを調査
+   - ボスコ/Bosco（機動兵）3: Claude Codeを調査
+   - ボスコ/Bosco（機動兵）4: Codeiumを調査
+   - ボスコ/Bosco（機動兵）5: Amazon CodeWhispererを調査
 3. 5体が同時に調査
 4. 結果がdashboard.mdに集約
 ```
@@ -513,10 +513,10 @@ claude mcp list
 あなた: 「このNotionページのプロジェクトでPoC準備: [URL]」
 
 実行される処理:
-1. 家老がMCP経由でNotionコンテンツを取得
-2. 足軽2: 確認すべき項目をリスト化
-3. 足軽3: 技術的な実現可能性を調査
-4. 足軽4: PoC計画書を作成
+1. プロンニア/Pulonia（執事）がMCP経由でNotionコンテンツを取得
+2. ボスコ/Bosco（機動兵）2: 確認すべき項目をリスト化
+3. ボスコ/Bosco（機動兵）3: 技術的な実現可能性を調査
+4. ボスコ/Bosco（機動兵）4: PoC計画書を作成
 5. 全結果がdashboard.mdに集約、会議の準備完了
 ```
 
@@ -560,10 +560,10 @@ language: en   # 日本語 + 英訳併記
 │                      毎日の起動（毎日実行）                           │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  shutsujin_departure.sh                                             │
+│  mission_start.sh                                             │
 │      │                                                              │
 │      ├──▶ tmuxセッションを作成                                       │
-│      │         • "shogun"セッション（1ペイン）                        │
+│      │         • "kairai"セッション（1ペイン）                        │
 │      │         • "multiagent"セッション（9ペイン、3x3グリッド）        │
 │      │                                                              │
 │      ├──▶ キューファイルとダッシュボードをリセット                     │
@@ -576,23 +576,23 @@ language: en   # 日本語 + 英訳併記
 </details>
 
 <details>
-<summary><b>shutsujin_departure.sh オプション</b>（クリックで展開）</summary>
+<summary><b>mission_start.sh オプション</b>（クリックで展開）</summary>
 
 ```bash
 # デフォルト: フル起動（tmuxセッション + Claude Code起動）
-./shutsujin_departure.sh
+./mission_start.sh
 
 # セッションセットアップのみ（Claude Code起動なし）
-./shutsujin_departure.sh -s
-./shutsujin_departure.sh --setup-only
+./mission_start.sh -s
+./mission_start.sh --setup-only
 
 # フル起動 + Windows Terminalタブを開く
-./shutsujin_departure.sh -t
-./shutsujin_departure.sh --terminal
+./mission_start.sh -t
+./mission_start.sh --terminal
 
 # ヘルプを表示
-./shutsujin_departure.sh -h
-./shutsujin_departure.sh --help
+./mission_start.sh -h
+./mission_start.sh --help
 ```
 
 </details>
@@ -602,27 +602,27 @@ language: en   # 日本語 + 英訳併記
 
 **通常の毎日の使用：**
 ```bash
-./shutsujin_departure.sh          # 全て起動
-tmux attach-session -t shogun     # 接続してコマンドを出す
+./mission_start.sh          # 全て起動
+tmux attach-session -t kairai     # 接続してコマンドを出す
 ```
 
 **デバッグモード（手動制御）：**
 ```bash
-./shutsujin_departure.sh -s       # セッションのみ作成
+./mission_start.sh -s       # セッションのみ作成
 
 # 特定のエージェントでClaude Codeを手動起動
-tmux send-keys -t shogun:0 'claude --dangerously-skip-permissions' Enter
+tmux send-keys -t kairai:0 'claude --dangerously-skip-permissions' Enter
 tmux send-keys -t multiagent:0.0 'claude --dangerously-skip-permissions' Enter
 ```
 
 **クラッシュ後の再起動：**
 ```bash
 # 既存セッションを終了
-tmux kill-session -t shogun
+tmux kill-session -t kairai
 tmux kill-session -t multiagent
 
 # 新しく起動
-./shutsujin_departure.sh
+./mission_start.sh
 ```
 
 </details>
@@ -633,8 +633,8 @@ tmux kill-session -t multiagent
 `first_setup.sh` を実行すると、以下のエイリアスが `~/.bashrc` に自動追加されます：
 
 ```bash
-alias css='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'  # セットアップ+出陣
-alias csm='cd /mnt/c/tools/multi-agent-shogun'                              # ディレクトリ移動のみ
+alias css='cd /mnt/c/tools/multi-agent-kairai && ./mission_start.sh'  # セットアップ+任務開始
+alias csm='cd /mnt/c/tools/multi-agent-kairai'                              # ディレクトリ移動のみ
 ```
 
 ※ エイリアスを反映するには `source ~/.bashrc` を実行するか、PowerShellで `wsl --shutdown` してからターミナルを開き直してください。
@@ -649,24 +649,24 @@ alias csm='cd /mnt/c/tools/multi-agent-shogun'                              # �
 <summary><b>クリックでファイル構成を展開</b></summary>
 
 ```
-multi-agent-shogun/
+multi-agent-kairai/
 │
 │  ┌─────────────────── セットアップスクリプト ───────────────────┐
 ├── install.bat               # Windows: 初回セットアップ
 ├── first_setup.sh            # Ubuntu/Mac: 初回セットアップ
-├── shutsujin_departure.sh    # 毎日の起動（指示書自動読み込み）
+├── mission_start.sh    # 毎日の起動（指示書自動読み込み）
 │  └────────────────────────────────────────────────────────────┘
 │
 ├── instructions/             # エージェント指示書
-│   ├── shogun.md             # 将軍の指示書
-│   ├── karo.md               # 家老の指示書
-│   └── ashigaru.md           # 足軽の指示書
+│   ├── kairai.md             # 傀儡/KAIRAI（執行官）の指示書
+│   ├── pulonia.md               # プロンニア/Pulonia（執事）の指示書
+│   └── bosco.md           # ボスコ/Bosco（機動兵）の指示書
 │
 ├── config/
 │   └── settings.yaml         # 言語その他の設定
 │
 ├── queue/                    # 通信ファイル
-│   ├── shogun_to_karo.yaml   # 将軍から家老へのコマンド
+│   ├── kairai_to_pulonia.yaml   # 傀儡/KAIRAI（執行官）からプロンニア/Pulonia（執事）へのコマンド
 │   ├── tasks/                # 各ワーカーのタスクファイル
 │   └── reports/              # ワーカーレポート
 │
@@ -725,11 +725,11 @@ tmux attach-session -t multiagent
 
 | コマンド | 説明 |
 |----------|------|
-| `tmux attach -t shogun` | 将軍に接続 |
+| `tmux attach -t kairai` | 傀儡/KAIRAI（執行官）に接続 |
 | `tmux attach -t multiagent` | ワーカーに接続 |
 | `Ctrl+B` の後 `0-8` | ペイン間を切り替え |
 | `Ctrl+B` の後 `d` | デタッチ（実行継続） |
-| `tmux kill-session -t shogun` | 将軍セッションを停止 |
+| `tmux kill-session -t kairai` | 傀儡/KAIRAI（執行官）セッションを停止 |
 | `tmux kill-session -t multiagent` | ワーカーセッションを停止 |
 
 ---

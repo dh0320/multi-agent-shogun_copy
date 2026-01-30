@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# first_setup.sh - multi-agent-shogun 初回セットアップスクリプト
+# first_setup.sh - multi-agent-kairai 初回セットアップスクリプト
 # Ubuntu / WSL / Mac 用環境構築ツール
 # ============================================================
 # 実行方法:
@@ -50,7 +50,7 @@ HAS_ERROR=false
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════════════════╗"
-echo "  ║  🏯 multi-agent-shogun インストーラー                         ║"
+echo "  ║  🫖 multi-agent-kairai インストーラー                         ║"
 echo "  ║     Initial Setup Script for Ubuntu / WSL                    ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo ""
@@ -342,11 +342,11 @@ log_step "STEP 6: 設定ファイル確認"
 if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     log_info "config/settings.yaml を作成中..."
     cat > "$SCRIPT_DIR/config/settings.yaml" << EOF
-# multi-agent-shogun 設定ファイル
+# multi-agent-kairai 設定ファイル
 
 # 言語設定
-# ja: 日本語（戦国風日本語のみ、併記なし）
-# en: 英語（戦国風日本語 + 英訳併記）
+# ja: 日本語（宮廷風日本語のみ、併記なし）
+# en: 英語（宮廷風日本語 + 英訳併記）
 # その他の言語コード（es, zh, ko, fr, de 等）も対応
 language: ja
 
@@ -357,7 +357,7 @@ shell: bash
 
 # スキル設定
 skill:
-  # スキル保存先（スキル名に shogun- プレフィックスを付けて保存）
+  # スキル保存先（スキル名に kairai- プレフィックスを付けて保存）
   save_path: "~/.claude/skills/"
 
   # ローカルスキル保存先（このプロジェクト専用）
@@ -399,7 +399,7 @@ if [ ! -f "$SCRIPT_DIR/memory/global_context.md" ]; then
 最終更新: (未設定)
 
 ## システム方針
-- (殿の好み・方針をここに記載)
+- (女皇陛下の好み・方針をここに記載)
 
 ## プロジェクト横断の決定事項
 - (複数プロジェクトに影響する決定をここに記載)
@@ -415,16 +415,16 @@ fi
 RESULTS+=("設定ファイル: OK")
 
 # ============================================================
-# STEP 7: 足軽用タスク・レポートファイル初期化
+# STEP 7: 機動兵用タスク・レポートファイル初期化
 # ============================================================
 log_step "STEP 7: キューファイル初期化"
 
-# 足軽用タスクファイル作成
+# 機動兵用タスクファイル作成
 for i in {1..8}; do
-    TASK_FILE="$SCRIPT_DIR/queue/tasks/ashigaru${i}.yaml"
+    TASK_FILE="$SCRIPT_DIR/queue/tasks/bosco${i}.yaml"
     if [ ! -f "$TASK_FILE" ]; then
         cat > "$TASK_FILE" << EOF
-# 足軽${i}専用タスクファイル
+# 機動兵${i}専用タスクファイル
 task:
   task_id: null
   parent_cmd: null
@@ -435,14 +435,14 @@ task:
 EOF
     fi
 done
-log_info "足軽タスクファイル (1-8) を確認/作成しました"
+log_info "機動兵タスクファイル (1-8) を確認/作成しました"
 
-# 足軽用レポートファイル作成
+# 機動兵用レポートファイル作成
 for i in {1..8}; do
-    REPORT_FILE="$SCRIPT_DIR/queue/reports/ashigaru${i}_report.yaml"
+    REPORT_FILE="$SCRIPT_DIR/queue/reports/bosco${i}_report.yaml"
     if [ ! -f "$REPORT_FILE" ]; then
         cat > "$REPORT_FILE" << EOF
-worker_id: ashigaru${i}
+worker_id: bosco${i}
 task_id: null
 timestamp: ""
 status: idle
@@ -450,7 +450,7 @@ result: null
 EOF
     fi
 done
-log_info "足軽レポートファイル (1-8) を確認/作成しました"
+log_info "機動兵レポートファイル (1-8) を確認/作成しました"
 
 RESULTS+=("キューファイル: OK")
 
@@ -461,7 +461,7 @@ log_step "STEP 8: 実行権限設定"
 
 SCRIPTS=(
     "setup.sh"
-    "shutsujin_departure.sh"
+    "mission_start.sh"
     "first_setup.sh"
 )
 
@@ -485,15 +485,15 @@ BASHRC_FILE="$HOME/.bashrc"
 # aliasが既に存在するかチェックし、なければ追加
 ALIAS_ADDED=false
 
-# css alias (出陣コマンド)
+# css alias (任務開始コマンド)
 if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='cd \"$SCRIPT_DIR\" && ./shutsujin_departure.sh'"
+    EXPECTED_CSS="alias css='cd \"$SCRIPT_DIR\" && ./mission_start.sh'"
     if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
         # alias が存在しない → 新規追加
         echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
+        echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（出陣コマンド）"
+        log_info "alias css を追加しました（任務開始コマンド）"
         ALIAS_ADDED=true
     elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
         # alias は存在するがパスが異なる → 更新
@@ -512,7 +512,7 @@ if [ -f "$BASHRC_FILE" ]; then
     if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
             echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
+            echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
         echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
         log_info "alias csm を追加しました（ディレクトリ移動）"
@@ -554,7 +554,7 @@ if command -v claude &> /dev/null; then
     else
         log_info "Memory MCP を設定中..."
         if claude mcp add memory \
-            -e MEMORY_FILE_PATH="$SCRIPT_DIR/memory/shogun_memory.jsonl" \
+            -e MEMORY_FILE_PATH="$SCRIPT_DIR/memory/kairai_memory.jsonl" \
             -- npx -y @modelcontextprotocol/server-memory 2>/dev/null; then
             log_success "Memory MCP 設定完了"
             RESULTS+=("Memory MCP: 設定完了")
@@ -573,7 +573,7 @@ fi
 # ============================================================
 echo ""
 echo "  ╔══════════════════════════════════════════════════════════════╗"
-echo "  ║  📋 セットアップ結果サマリー                                  ║"
+echo "  ║  🎩 セットアップ結果サマリー                                  ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -598,7 +598,7 @@ if [ "$HAS_ERROR" = true ]; then
     echo "  すべての依存関係が揃ったら、再度このスクリプトを実行して確認できます。"
 else
     echo "  ╔══════════════════════════════════════════════════════════════╗"
-    echo "  ║  ✅ セットアップ完了！準備万端でござる！                      ║"
+    echo "  ║  ✅ セットアップ完了。システム準備完了。                      ║"
     echo "  ╚══════════════════════════════════════════════════════════════╝"
 fi
 
@@ -607,21 +607,21 @@ echo "  ┌───────────────────────
 echo "  │  📜 次のステップ                                             │"
 echo "  └──────────────────────────────────────────────────────────────┘"
 echo ""
-echo "  出陣（全エージェント起動）:"
-echo "     ./shutsujin_departure.sh"
+echo "  任務開始（全エージェント起動）:"
+echo "     ./mission_start.sh"
 echo ""
 echo "  オプション:"
-echo "     ./shutsujin_departure.sh -s            # セットアップのみ（Claude手動起動）"
-echo "     ./shutsujin_departure.sh -t            # Windows Terminalタブ展開"
-echo "     ./shutsujin_departure.sh -shell bash   # bash用プロンプトで起動"
-echo "     ./shutsujin_departure.sh -shell zsh    # zsh用プロンプトで起動"
+echo "     ./mission_start.sh -s            # セットアップのみ（Claude手動起動）"
+echo "     ./mission_start.sh -t            # Windows Terminalタブ展開"
+echo "     ./mission_start.sh -shell bash   # bash用プロンプトで起動"
+echo "     ./mission_start.sh -shell zsh    # zsh用プロンプトで起動"
 echo ""
 echo "  ※ シェル設定は config/settings.yaml の shell: でも変更可能です"
 echo ""
 echo "  詳細は README.md を参照してください。"
 echo ""
 echo "  ════════════════════════════════════════════════════════════════"
-echo "   天下布武！ (Tenka Fubu!)"
+echo "   Setup Complete! Ready for mission."
 echo "  ════════════════════════════════════════════════════════════════"
 echo ""
 
