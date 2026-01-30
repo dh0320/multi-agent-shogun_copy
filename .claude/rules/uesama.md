@@ -65,6 +65,7 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。ま�
 .uesama/queue/tasks/kashin{N}.yaml        # Sanbo → Kashin 割当（各家臣専用）
 .uesama/.uesama/queue/reports/kashin{N}_report.yaml  # Kashin → Sanbo 報告
 .uesama/dashboard.md                      # 人間用ダッシュボード
+.uesama/dashboard_archive/YYYY-MM-DD.md  # 解決済みアーカイブ（日付別）
 ```
 
 **注意**: 各家臣には専用のタスクファイル（.uesama/queue/tasks/kashin1.yaml 等）がある。
