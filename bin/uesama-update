@@ -1,0 +1,65 @@
+#!/bin/sh
+# uesama アップデーター
+set -e
+
+REPO_URL="https://github.com/y-nishizaki/uesama"
+UESAMA_HOME="$HOME/.uesama"
+
+if [ ! -d "$UESAMA_HOME" ]; then
+    echo "  uesama がインストールされていません。install.sh を実行してください。"
+    exit 1
+fi
+
+echo ""
+echo "  🏯 uesama を更新中..."
+echo ""
+
+# 一時ディレクトリにソース取得
+TMPDIR=$(mktemp -d)
+cleanup() {
+    rm -rf "$TMPDIR"
+}
+trap cleanup EXIT
+
+if command -v git >/dev/null 2>&1; then
+    git clone --depth 1 "$REPO_URL.git" "$TMPDIR/uesama" >/dev/null 2>&1
+    SRC="$TMPDIR/uesama"
+else
+    curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" -o "$TMPDIR/uesama.tar.gz"
+    tar xzf "$TMPDIR/uesama.tar.gz" -C "$TMPDIR"
+    SRC="$TMPDIR/multi-agent-shogun-main"
+fi
+
+# bin/, scripts/, template/ を上書き更新
+cp -r "$SRC/bin/"* "$UESAMA_HOME/bin/"
+cp -r "$SRC/scripts/"* "$UESAMA_HOME/scripts/"
+
+mkdir -p "$UESAMA_HOME/template"
+rm -rf "$UESAMA_HOME/template/.uesama" "$UESAMA_HOME/template/.claude"
+cp -r "$SRC/.uesama" "$UESAMA_HOME/template/"
+mkdir -p "$UESAMA_HOME/template/.claude/rules"
+cp "$SRC/.claude/rules/uesama.md" "$UESAMA_HOME/template/.claude/rules/uesama.md"
+
+# settings.yaml マージ（新キーのみ追加、既存キーは保持）
+NEW_SETTINGS="$SRC/.uesama/config/settings.yaml"
+USER_SETTINGS="$UESAMA_HOME/config/settings.yaml"
+if [ -f "$NEW_SETTINGS" ] && [ -f "$USER_SETTINGS" ]; then
+    # 新しい設定ファイルの各行について、ユーザー設定に存在しないキーのみ追加
+    while IFS= read -r line; do
+        key=$(echo "$line" | sed -n 's/^\([a-zA-Z_][a-zA-Z0-9_]*\):.*/\1/p')
+        [ -z "$key" ] && continue
+        if ! grep -q "^${key}:" "$USER_SETTINGS" 2>/dev/null; then
+            echo "$line" >> "$USER_SETTINGS"
+        fi
+    done < "$NEW_SETTINGS"
+elif [ -f "$NEW_SETTINGS" ] && [ ! -f "$USER_SETTINGS" ]; then
+    mkdir -p "$UESAMA_HOME/config"
+    cp "$NEW_SETTINGS" "$USER_SETTINGS"
+fi
+
+# 実行権限付与
+chmod +x "$UESAMA_HOME/bin/"*
+chmod +x "$UESAMA_HOME/scripts/"*
+
+echo "  ✅ 更新完了！"
+echo ""
