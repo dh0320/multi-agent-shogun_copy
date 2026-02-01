@@ -693,31 +693,34 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    # CLIタイプに応じた起動待機メッセージ
+    # CLIタイプに応じた起動確認
     if [ "$SHOGUN_CLI" = "copilot" ]; then
         echo "  GitHub Copilot CLI の起動を待機中（最大30秒）..."
-    else
-        echo "  Claude Code の起動を待機中（最大30秒）..."
-    fi
-
-    # 将軍の起動を確認（最大30秒待機）
-    for i in {1..30}; do
-        # CLIタイプに応じた起動確認
-        if [ "$SHOGUN_CLI" = "copilot" ]; then
-            # Copilot CLIは起動確認メッセージが異なるため、プロンプト表示をチェック
-            if tmux capture-pane -t shogun -p | grep -q -E "(>|$)"; then
+        COPILOT_STARTED=false
+        for i in {1..30}; do
+            # Copilot CLI のプロンプト "? " を検知
+            if tmux capture-pane -t shogun -p | tail -5 | grep -q "^\? "; then
                 echo "  └─ 将軍の GitHub Copilot CLI 起動確認完了（${i}秒）"
+                COPILOT_STARTED=true
                 break
             fi
-        else
-            # Claude Codeは"bypass permissions"メッセージをチェック
+            sleep 1
+        done
+
+        if [ "$COPILOT_STARTED" = false ]; then
+            log_warn "GitHub Copilot CLI の起動確認がタイムアウトしました（30秒）"
+            log_info "手動で起動状態を確認してください"
+        fi
+    else
+        echo "  Claude Code の起動を待機中（最大30秒）..."
+        for i in {1..30}; do
             if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
                 echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
                 break
             fi
-        fi
-        sleep 1
-    done
+            sleep 1
+        done
+    fi
 
     # 将軍に指示書を読み込ませる
     log_info "  └─ 将軍に指示書を伝達中..."
