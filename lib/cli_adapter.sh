@@ -99,8 +99,18 @@ build_cli_command() {
             # エージェント固有の環境変数
             env_vars=$(get_agent_env "$agent_name" "$yaml_config")
 
+            # エージェント専用の指示書を標準ファイル名にコピー
+            # Copilot CLI は .github/copilot-instructions.md しか読まないため
+            local instructions_copy=""
+            if [ -f ".github/copilot-instructions-${agent_name}.md" ]; then
+                instructions_copy="cp .github/copilot-instructions-${agent_name}.md .github/copilot-instructions.md 2>/dev/null || true && "
+            fi
+
             # デフォルトオプション
             options="--allow-all --allow-all-tools --allow-all-paths"
+
+            # コピーコマンド + copilot コマンドを結合
+            base_cmd="${instructions_copy}${base_cmd}"
             ;;
 
         *)
@@ -250,7 +260,13 @@ generate_copilot_instructions() {
     local instructions_dir="$2"
     local output_file="$3"
 
-    local instruction_file="${instructions_dir}/${agent_name}.md"
+    # 足軽1-8の場合は ashigaru.md を使用
+    local base_name="$agent_name"
+    if [[ "$agent_name" =~ ^ashigaru[1-8]$ ]]; then
+        base_name="ashigaru"
+    fi
+
+    local instruction_file="${instructions_dir}/${base_name}.md"
 
     if [ ! -f "$instruction_file" ]; then
         echo "Warning: Instruction file not found: $instruction_file" >&2
