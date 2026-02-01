@@ -120,7 +120,7 @@ while [[ $# -gt 0 ]]; do
             echo "オプション:"
             echo "  -s, --setup-only    tmuxセッションのセットアップのみ（AI CLI起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
-            echo "  --claude            Claude Code CLI を強制使用（設定ファイルを無視）"
+            echo "  --claude            Claude Code を強制使用（設定ファイルを無視）"
             echo "  --copilot           GitHub Copilot CLI を強制使用（設定ファイルを無視）"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
             echo "                      未指定時は config/settings.yaml の設定を使用"
@@ -128,7 +128,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "例:"
             echo "  ./shutsujin_departure.sh              # 設定ファイルに従って起動"
-            echo "  ./shutsujin_departure.sh --claude     # Claude Code CLI で起動"
+            echo "  ./shutsujin_departure.sh --claude     # Claude Code で起動"
             echo "  ./shutsujin_departure.sh --copilot    # GitHub Copilot CLI で起動"
             echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でCLI起動）"
             echo "  ./shutsujin_departure.sh -t           # 全エージェント起動 + ターミナルタブ展開"
@@ -545,7 +545,7 @@ if [ "$SETUP_ONLY" = false ]; then
             # Copilot用指示書を生成
             generate_copilot_instructions "shogun" "./instructions" "./.github/copilot-instructions-shogun.md" 2>/dev/null || true
         else
-            log_info "  │  └─ 将軍、召喚完了 🧠 (Claude Code CLI)"
+            log_info "  │  └─ 将軍、召喚完了 🧠 (Claude Code)"
         fi
 
         sleep 1
@@ -585,7 +585,7 @@ if [ "$SETUP_ONLY" = false ]; then
         if [ "$SHOGUN_CLI" = "copilot" ]; then
             log_success "✅ 全軍 GitHub Copilot CLI 起動完了"
         else
-            log_success "✅ 全軍 Claude Code CLI 起動完了"
+            log_success "✅ 全軍 Claude Code 起動完了"
         fi
         echo ""
     else
@@ -599,7 +599,7 @@ if [ "$SETUP_ONLY" = false ]; then
             exit 1
         fi
 
-        # 従来モードでは常にClaude Code CLIを使用
+        # 従来モードでは常にClaude Codeを使用
         SHOGUN_CLI="claude"
 
         log_war "👑 全軍に Claude Code を召喚中..."
@@ -697,18 +697,24 @@ NINJA_EOF
     if [ "$SHOGUN_CLI" = "copilot" ]; then
         echo "  GitHub Copilot CLI の起動を待機中（最大30秒）..."
     else
-        echo "  Claude Code CLI の起動を待機中（最大30秒）..."
+        echo "  Claude Code の起動を待機中（最大30秒）..."
     fi
 
     # 将軍の起動を確認（最大30秒待機）
     for i in {1..30}; do
-        if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
-            if [ "$SHOGUN_CLI" = "copilot" ]; then
+        # CLIタイプに応じた起動確認
+        if [ "$SHOGUN_CLI" = "copilot" ]; then
+            # Copilot CLIは起動確認メッセージが異なるため、プロンプト表示をチェック
+            if tmux capture-pane -t shogun -p | grep -q -E "(>|$)"; then
                 echo "  └─ 将軍の GitHub Copilot CLI 起動確認完了（${i}秒）"
-            else
-                echo "  └─ 将軍の Claude Code CLI 起動確認完了（${i}秒）"
+                break
             fi
-            break
+        else
+            # Claude Codeは"bypass permissions"メッセージをチェック
+            if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
+                echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
+                break
+            fi
         fi
         sleep 1
     done
@@ -804,9 +810,9 @@ if [ "$SETUP_ONLY" = true ]; then
         echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
         echo "  │      'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
     else
-        echo "  ⚠️  セットアップのみモード: Claude Code CLIは未起動です"
+        echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
         echo ""
-        echo "  手動でClaude Code CLIを起動するには:"
+        echo "  手動でClaude Codeを起動するには:"
         echo "  ┌──────────────────────────────────────────────────────────┐"
         echo "  │  # 将軍を召喚                                            │"
         echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
