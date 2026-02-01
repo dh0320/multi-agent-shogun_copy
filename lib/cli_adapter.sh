@@ -94,7 +94,7 @@ build_cli_command() {
             ;;
 
         copilot)
-            base_cmd="copilot"
+            base_cmd="gh copilot"
 
             # エージェント固有の環境変数
             env_vars=$(get_agent_env "$agent_name" "$yaml_config")
@@ -229,17 +229,19 @@ validate_cli_availability() {
             return 0
             ;;
         copilot)
-            if ! command -v copilot &>/dev/null; then
-                echo "Error: GitHub Copilot CLI が見つかりません" >&2
-                echo "インストール: brew install gh (or apt/yum), then gh extension install github/gh-copilot" >&2
+            # GitHub Copilot CLI は gh の拡張機能として提供される
+            if ! command -v gh &>/dev/null; then
+                echo "Error: GitHub CLI (gh) が見つかりません" >&2
+                echo "インストール: brew install gh (Mac) または sudo apt install gh (Ubuntu/Debian)" >&2
                 return 1
             fi
 
-            # GitHub認証チェック（警告のみ）
-            if ! gh auth status &>/dev/null 2>&1; then
-                echo "Warning: GitHub にログインしていません" >&2
+            # gh copilot コマンドが利用可能か確認
+            if ! gh copilot --version &>/dev/null 2>&1; then
+                echo "Error: GitHub Copilot CLI 拡張が見つかりません" >&2
+                echo "インストール: gh extension install github/gh-copilot" >&2
                 echo "認証: gh auth login" >&2
-                # 警告のみで続行
+                return 1
             fi
             return 0
             ;;
@@ -276,6 +278,20 @@ generate_copilot_instructions() {
     # .github ディレクトリを作成
     mkdir -p "$(dirname "$output_file")"
 
+    # Lock file for race condition prevention
+    local lock_file="${output_file}.lock"
+    local max_wait=5
+    local wait_count=0
+
+    # Wait for lock (max 5 seconds)
+    while [ -f "$lock_file" ] && [ $wait_count -lt $max_wait ]; do
+        sleep 1
+        wait_count=$((wait_count + 1))
+    done
+
+    # Create lock
+    touch "$lock_file"
+
     # 指示書をコピー
     cat "$instruction_file" > "$output_file"
 
@@ -286,6 +302,9 @@ generate_copilot_instructions() {
         echo "" >> "$output_file"
         cat "memory/global_context.md" >> "$output_file"
     fi
+
+    # Remove lock
+    rm -f "$lock_file"
 
     return 0
 }

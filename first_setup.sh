@@ -338,10 +338,10 @@ if command -v gh &> /dev/null; then
     log_success "GitHub CLI (gh) がインストールされています"
     gh --version | head -1
 
-    # Copilot CLI の確認
-    if command -v copilot &> /dev/null; then
+    # Copilot CLI の確認（gh extension として）
+    if gh copilot --version &> /dev/null 2>&1; then
         log_success "GitHub Copilot CLI がインストールされています"
-        copilot --version | head -1
+        gh copilot --version | head -1
         RESULTS+=("GitHub Copilot CLI: インストール済み")
 
         # GitHub認証の確認

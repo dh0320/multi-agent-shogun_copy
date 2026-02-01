@@ -7,6 +7,7 @@ claude-shogun-orders.md
 .mcp.json
 
 # Copilot instructions (generated at runtime)
+.github/copilot-instructions.md
 .github/copilot-instructions-*.md
 
 # Test outputs (generated during testing)
