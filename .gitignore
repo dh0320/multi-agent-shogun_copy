@@ -6,8 +6,7 @@ claude-shogun-orders.md
 !.claude/settings.json
 .mcp.json
 
-# Copilot instructions (generated at runtime)
-.github/copilot-instructions.md
+# Copilot instructions (agent-specific files generated at runtime)
 .github/copilot-instructions-*.md
 
 # Test outputs (generated during testing)

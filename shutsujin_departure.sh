@@ -708,7 +708,7 @@ NINJA_EOF
         done
 
         if [ "$COPILOT_STARTED" = false ]; then
-            log_warn "GitHub Copilot CLI の起動確認がタイムアウトしました（30秒）"
+            log_war "GitHub Copilot CLI の起動確認がタイムアウトしました（30秒）"
             log_info "手動で起動状態を確認してください"
         fi
     else
