@@ -428,13 +428,19 @@ screenshot:
 初期状態ではスキルはありません。
 運用中にダッシュボード（dashboard.md）の「スキル化候補」から承認して増やしていきます。
 
-スキルは `/スキル名` で呼び出し可能。将軍に「/スキル名 を実行」と伝えるだけ。
+スキルの呼び出し方法はエージェントで異なります。
+- **Claude Code**: `/スキル名`
+- **Codex**: `$スキル名`
+
+保存場所もエージェントで異なります。
+- **Claude Code**: `~/.claude/skills/`
+- **Codex**: `~/.codex/skills/`
 
 ### スキルの思想
 
 **1. スキルはコミット対象外**
 
-`.claude/commands/` 配下のスキルはリポジトリにコミットしない設計。理由：
+スキルはリポジトリにコミットしない設計。保存先はエージェントごとに異なる。理由：
 - 各ユーザの業務・ワークフローは異なる
 - 汎用的なスキルを押し付けるのではなく、ユーザが自分に必要なスキルを育てていく
 
@@ -456,43 +462,49 @@ dashboard.md の「スキル化候補」に上がる
 
 ## 🔌 MCPセットアップガイド
 
-MCP（Model Context Protocol）サーバはClaudeの機能を拡張します。セットアップ方法：
+MCP（Model Context Protocol）サーバはClaude/Codexの機能を拡張します。セットアップ方法：
 
 ### MCPとは？
 
-MCPサーバはClaudeに外部ツールへのアクセスを提供します：
+MCPサーバはエージェントに外部ツールへのアクセスを提供します：
 - **Notion MCP** → Notionページの読み書き
 - **GitHub MCP** → PR作成、Issue管理
 - **Memory MCP** → セッション間で記憶を保持
 
 ### MCPサーバのインストール
 
-以下のコマンドでMCPサーバを追加：
+以下のコマンドでMCPサーバを追加（`config/settings.yaml` の `agent` に応じて `claude` または `codex` を使用）：
 
 ```bash
 # 1. Notion - Notionワークスペースに接続
 claude mcp add notion -e NOTION_TOKEN=your_token_here -- npx -y @notionhq/notion-mcp-server
+# codex: codex mcp add notion --env NOTION_TOKEN=your_token_here -- npx -y @notionhq/notion-mcp-server
 
 # 2. Playwright - ブラウザ自動化
 claude mcp add playwright -- npx @playwright/mcp@latest
+# codex: codex mcp add playwright -- npx @playwright/mcp@latest
 # 注意: 先に `npx playwright install chromium` を実行してください
 
 # 3. GitHub - リポジトリ操作
 claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=your_pat_here -- npx -y @modelcontextprotocol/server-github
+# codex: codex mcp add github --env GITHUB_PERSONAL_ACCESS_TOKEN=your_pat_here -- npx -y @modelcontextprotocol/server-github
 
 # 4. Sequential Thinking - 複雑な問題を段階的に思考
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+# codex: codex mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
 
 # 5. Memory - セッション間の長期記憶（推奨！）
-# ✅ first_setup.sh で自動設定済み
+# ✅ first_setup.sh で自動設定済み（config/settings.yaml を参照）
 # 手動で再設定する場合:
 claude mcp add memory -e MEMORY_FILE_PATH="$PWD/memory/shogun_memory.jsonl" -- npx -y @modelcontextprotocol/server-memory
+# codex: codex mcp add memory --env MEMORY_FILE_PATH="$PWD/memory/shogun_memory.jsonl" -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ### インストール確認
 
 ```bash
 claude mcp list
+# codex: codex mcp list
 ```
 
 全サーバが「Connected」ステータスで表示されるはずです。
@@ -758,10 +770,11 @@ mcp__memory__read_graph()  ← 動作！
 <details>
 <summary><b>エージェントが権限を求めてくる？</b></summary>
 
-`--dangerously-skip-permissions` 付きで起動していることを確認：
+エージェントに応じて以下のフラグで起動していることを確認：
 
 ```bash
 claude --dangerously-skip-permissions --system-prompt "..."
+codex --dangerously-bypass-approvals-and-sandbox
 ```
 
 </details>
@@ -789,6 +802,18 @@ tmux attach-session -t multiagent
 | `Ctrl+B` の後 `d` | デタッチ（実行継続） |
 | `tmux kill-session -t shogun` | 将軍セッションを停止 |
 | `tmux kill-session -t multiagent` | ワーカーセッションを停止 |
+
+---
+
+## 📂 作業ディレクトリ
+
+起動時に全ペインは、`config/projects.yaml` の `current_project` に対応する `path` へ `cd` する。
+`path` が未設定・無効な場合は `multi-agent-shogun` リポジトリ直下へフォールバックする。
+
+### 環境変数
+
+- `SHOGUN_HOME`: 本リポジトリの絶対パス（システムルート）
+- `SHOGUN_PROJECT_ROOT`: アクティブなプロジェクトの絶対パス（`current_project`）
 
 ### 🖱️ マウス操作
 
