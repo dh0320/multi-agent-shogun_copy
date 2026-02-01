@@ -537,13 +537,16 @@ if [ "$SETUP_ONLY" = false ]; then
             fi
         fi
 
+        # Copilot用指示書を生成（CLI起動前に必要）
+        if [ "$SHOGUN_CLI" = "copilot" ]; then
+            generate_copilot_instructions "shogun" "./instructions" "./.github/copilot-instructions-shogun.md" 2>/dev/null || true
+        fi
+
         tmux send-keys -t shogun "$SHOGUN_CMD"
         tmux send-keys -t shogun Enter
 
         if [ "$SHOGUN_CLI" = "copilot" ]; then
             log_info "  │  └─ 将軍、召喚完了 ⚡ (GitHub Copilot CLI)"
-            # Copilot用指示書を生成
-            generate_copilot_instructions "shogun" "./instructions" "./.github/copilot-instructions-shogun.md" 2>/dev/null || true
         else
             log_info "  │  └─ 将軍、召喚完了 🧠 (Claude Code)"
         fi
@@ -570,13 +573,13 @@ if [ "$SETUP_ONLY" = false ]; then
 
             AGENT_CMD=$(build_cli_command "$AGENT_NAME" "$AGENT_CLI" "$CONFIG_FILE")
 
-            tmux send-keys -t "multiagent:0.$i" "$AGENT_CMD"
-            tmux send-keys -t "multiagent:0.$i" Enter
-
-            # Copilot用指示書を生成
+            # Copilot用指示書を生成（CLI起動前に必要）
             if [ "$AGENT_CLI" = "copilot" ]; then
                 generate_copilot_instructions "$AGENT_NAME" "./instructions" "./.github/copilot-instructions-${AGENT_NAME}.md" 2>/dev/null || true
             fi
+
+            tmux send-keys -t "multiagent:0.$i" "$AGENT_CMD"
+            tmux send-keys -t "multiagent:0.$i" Enter
         done
 
         log_info "  └─ 家老・足軽、召喚完了"
