@@ -541,7 +541,7 @@ if [ "$SETUP_ONLY" = false ]; then
         if [ "$SHOGUN_CLI" = "copilot" ]; then
             generate_copilot_instructions "shogun" "./instructions" "./.github/copilot-instructions-shogun.md" 2>/dev/null || true
             if [ -f "./.github/copilot-instructions-shogun.md" ]; then
-                local size=$(wc -c < "./.github/copilot-instructions-shogun.md")
+                size=$(wc -c < "./.github/copilot-instructions-shogun.md")
                 log_info "  │  ├─ 指示書生成完了: copilot-instructions-shogun.md (${size} bytes)"
             else
                 log_war "  │  ├─ 指示書の生成に失敗しました (shogun)"
@@ -584,7 +584,7 @@ if [ "$SETUP_ONLY" = false ]; then
             if [ "$AGENT_CLI" = "copilot" ]; then
                 generate_copilot_instructions "$AGENT_NAME" "./instructions" "./.github/copilot-instructions-${AGENT_NAME}.md" 2>/dev/null || true
                 if [ -f "./.github/copilot-instructions-${AGENT_NAME}.md" ]; then
-                    local size=$(wc -c < "./.github/copilot-instructions-${AGENT_NAME}.md")
+                    size=$(wc -c < "./.github/copilot-instructions-${AGENT_NAME}.md")
                     log_info "  │  ├─ 指示書生成完了: copilot-instructions-${AGENT_NAME}.md (${size} bytes)"
                 else
                     log_war "  │  ├─ 指示書の生成に失敗しました (${AGENT_NAME})"
