@@ -198,7 +198,7 @@ else
             echo ""
             echo "  手動でインストールする場合:"
             echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-            echo "    source ~/.bashrc"
+            echo "    source ~/.zshrc"
             echo "    nvm install 20"
             echo ""
             RESULTS+=("Node.js: 未インストール (スキップ)")
@@ -226,7 +226,7 @@ else
         echo ""
         echo "  手動でインストールしてください:"
         echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-        echo "    source ~/.bashrc"
+        echo "    source ~/.zshrc"
         echo "    nvm install 20"
         echo ""
         RESULTS+=("Node.js: 未インストール (nvm失敗)")
@@ -475,29 +475,29 @@ done
 RESULTS+=("実行権限: OK")
 
 # ============================================================
-# STEP 9: bashrc alias設定
+# STEP 9: zshrc alias設定
 # ============================================================
 log_step "STEP 9: alias設定"
 
 # alias追加対象ファイル
-BASHRC_FILE="$HOME/.bashrc"
+ZSHRC_FILE="$HOME/.zshrc"
 
 # aliasが既に存在するかチェックし、なければ追加
 ALIAS_ADDED=false
 
 # css alias (任務開始コマンド)
-if [ -f "$BASHRC_FILE" ]; then
+if [ -f "$ZSHRC_FILE" ]; then
     EXPECTED_CSS="alias css='cd \"$SCRIPT_DIR\" && ./mission_start.sh'"
-    if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
+    if ! grep -q "alias css=" "$ZSHRC_FILE" 2>/dev/null; then
         # alias が存在しない → 新規追加
-        echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
+        echo "" >> "$ZSHRC_FILE"
+        echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$ZSHRC_FILE"
+        echo "$EXPECTED_CSS" >> "$ZSHRC_FILE"
         log_info "alias css を追加しました（任務開始コマンド）"
         ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
+    elif ! grep -qF "$EXPECTED_CSS" "$ZSHRC_FILE" 2>/dev/null; then
         # alias は存在するがパスが異なる → 更新
-        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$BASHRC_FILE" 2>/dev/null; then
+        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$ZSHRC_FILE" 2>/dev/null; then
             log_info "alias css を更新しました（パス変更検出）"
         else
             log_warn "alias css の更新に失敗しました"
@@ -509,16 +509,16 @@ if [ -f "$BASHRC_FILE" ]; then
 
     # csm alias (ディレクトリ移動)
     EXPECTED_CSM="alias csm='cd \"$SCRIPT_DIR\"'"
-    if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
+    if ! grep -q "alias csm=" "$ZSHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
+            echo "" >> "$ZSHRC_FILE"
+            echo "# multi-agent-kairai aliases (added by first_setup.sh)" >> "$ZSHRC_FILE"
         fi
-        echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
+        echo "$EXPECTED_CSM" >> "$ZSHRC_FILE"
         log_info "alias csm を追加しました（ディレクトリ移動）"
         ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then
+    elif ! grep -qF "$EXPECTED_CSM" "$ZSHRC_FILE" 2>/dev/null; then
+        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$ZSHRC_FILE" 2>/dev/null; then
             log_info "alias csm を更新しました（パス変更検出）"
         else
             log_warn "alias csm の更新に失敗しました"
@@ -528,13 +528,13 @@ if [ -f "$BASHRC_FILE" ]; then
         log_info "alias csm は既に正しく設定されています"
     fi
 else
-    log_warn "$BASHRC_FILE が見つかりません"
+    log_warn "$ZSHRC_FILE が見つかりません"
 fi
 
 if [ "$ALIAS_ADDED" = true ]; then
     log_success "alias設定を追加しました"
     log_warn "alias を反映するには、以下のいずれかを実行してください："
-    log_info "  1. source ~/.bashrc"
+    log_info "  1. source ~/.zshrc"
     log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"
     log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
 fi

@@ -4,7 +4,7 @@
 
 **Claude Code マルチエージェント統率システム**
 
-*コマンド1つで、8体のAIエージェントが並列稼働*
+_コマンド1つで、8体のAIエージェントが並列稼働_
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
@@ -21,6 +21,7 @@
 **multi-agent-kairai** は、複数の Claude Code インスタンスを同時に実行し、宮廷の階層構造のように統率するシステムです。
 
 **なぜ使うのか？**
+
 - 1つの命令で、8体のAIワーカーが並列で実行
 - 待ち時間なし - タスクがバックグラウンドで実行中も次の命令を出せる
 - AIがセッションを跨いであなたの好みを記憶（Memory MCP）
@@ -63,7 +64,7 @@
 
 [ZIPダウンロード](https://github.com/yohey-w/multi-agent-kairai/archive/refs/heads/main.zip) して `C:\tools\multi-agent-kairai` に展開
 
-*または git を使用:* `git clone https://github.com/yohey-w/multi-agent-kairai.git C:\tools\multi-agent-kairai`
+_または git を使用:_ `git clone https://github.com/yohey-w/multi-agent-kairai.git C:\tools\multi-agent-kairai`
 
 </td>
 </tr>
@@ -165,11 +166,13 @@ cd ~/multi-agent-kairai
 ### WSL2がまだない場合
 
 問題ありません！`install.bat` を実行すると：
+
 1. WSL2がインストールされているかチェック（なければ自動インストール）
 2. Ubuntuがインストールされているかチェック（なければ自動インストール）
 3. 次のステップ（`first_setup.sh` の実行方法）を案内
 
 **クイックインストールコマンド**（PowerShellを管理者として実行）：
+
 ```powershell
 wsl --install
 ```
@@ -183,18 +186,20 @@ wsl --install
 <details>
 <summary>🎩 <b>スクリプトリファレンス</b>（クリックで展開）</summary>
 
-| スクリプト | 用途 | 実行タイミング |
-|-----------|------|---------------|
-| `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
-| `first_setup.sh` | tmux、Node.js、Claude Code CLI をインストール | 初回のみ |
-| `mission_start.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み | 毎日 |
+| スクリプト         | 用途                                                  | 実行タイミング |
+| ------------------ | ----------------------------------------------------- | -------------- |
+| `install.bat`      | Windows: WSL2 + Ubuntu のセットアップ                 | 初回のみ       |
+| `first_setup.sh`   | tmux、Node.js、Claude Code CLI をインストール         | 初回のみ       |
+| `mission_start.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み | 毎日           |
 
 ### `install.bat` が自動で行うこと：
+
 - ✅ WSL2がインストールされているかチェック（未インストールなら案内）
 - ✅ Ubuntuがインストールされているかチェック（未インストールなら案内）
 - ✅ 次のステップ（`first_setup.sh` の実行方法）を案内
 
 ### `mission_start.sh` が行うこと：
+
 - ✅ tmuxセッションを作成（kairai + multiagent）
 - ✅ 全エージェントでClaude Codeを起動
 - ✅ 各エージェントに指示書を自動読み込み
@@ -211,12 +216,12 @@ wsl --install
 
 依存関係を手動でインストールする場合：
 
-| 要件 | インストール方法 | 備考 |
-|------|-----------------|------|
-| WSL2 + Ubuntu | PowerShellで `wsl --install` | Windowsのみ |
-| tmux | `sudo apt install tmux` | ターミナルマルチプレクサ |
-| Node.js v20+ | `nvm install 20` | Claude Code CLIに必要 |
-| Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | Anthropic公式CLI |
+| 要件            | インストール方法                           | 備考                     |
+| --------------- | ------------------------------------------ | ------------------------ |
+| WSL2 + Ubuntu   | PowerShellで `wsl --install`               | Windowsのみ              |
+| tmux            | `sudo apt install tmux`                    | ターミナルマルチプレクサ |
+| Node.js v20+    | `nvm install 20`                           | Claude Code CLIに必要    |
+| Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | Anthropic公式CLI         |
 
 </details>
 
@@ -226,13 +231,14 @@ wsl --install
 
 どちらのオプションでも、**10体のAIエージェント**が自動起動します：
 
-| エージェント | 役割 | 数 |
-|-------------|------|-----|
-| 🫖 傀儡/KAIRAI（執行官） | 総大将 - あなたの命令を受ける | 1 |
-| 🎩 プロンニア/Pulonia（執事） | 管理者 - タスクを分配 | 1 |
-| 🤖 ボスコ/Bosco（機動兵） | ワーカー - 並列でタスク実行 | 8 |
+| エージェント                  | 役割                          | 数  |
+| ----------------------------- | ----------------------------- | --- |
+| 🫖 傀儡/KAIRAI（執行官）      | 総大将 - あなたの命令を受ける | 1   |
+| 🎩 プロンニア/Pulonia（執事） | 管理者 - タスクを分配         | 1   |
+| 🤖 ボスコ/Bosco（機動兵）     | ワーカー - 並列でタスク実行   | 8   |
 
 tmuxセッションが作成されます：
+
 - `kairai` - ここに接続してコマンドを出す
 - `multiagent` - ワーカーがバックグラウンドで稼働
 
@@ -259,6 +265,7 @@ JavaScriptフレームワーク上位5つを調査して比較表を作成せよ
 ```
 
 傀儡/KAIRAI（執行官）は：
+
 1. タスクをYAMLファイルに書き込む
 2. プロンニア/Pulonia（執事）（管理者）に通知
 3. 即座にあなたに制御を返す（待つ必要なし！）
@@ -271,11 +278,12 @@ JavaScriptフレームワーク上位5つを調査して比較表を作成せよ
 
 ```markdown
 ## 進行中
-| ワーカー | タスク | 状態 |
-|----------|--------|------|
-| ボスコ/Bosco（機動兵） 1 | React調査 | 実行中 |
-| ボスコ/Bosco（機動兵） 2 | Vue調査 | 実行中 |
-| ボスコ/Bosco（機動兵） 3 | Angular調査 | 完了 |
+
+| ワーカー                 | タスク      | 状態   |
+| ------------------------ | ----------- | ------ |
+| ボスコ/Bosco（機動兵） 1 | React調査   | 実行中 |
+| ボスコ/Bosco（機動兵） 2 | Vue調査     | 実行中 |
+| ボスコ/Bosco（機動兵） 3 | Angular調査 | 完了   |
 ```
 
 ---
@@ -341,6 +349,7 @@ screenshot:
 **💡 Windowsのコツ:** `Win + Shift + S` でスクショが撮れます。保存先を `settings.yaml` のパスに合わせると、シームレスに連携できます。
 
 こんな時に便利：
+
 - UIのバグを視覚的に説明
 - エラーメッセージを見せる
 - 変更前後の状態を比較
@@ -349,13 +358,14 @@ screenshot:
 
 効率的な知識共有のため、3層構造のコンテキストを採用：
 
-| レイヤー | 場所 | 用途 |
-|---------|------|------|
-| Memory MCP | `memory/kairai_memory.jsonl` | セッションを跨ぐ長期記憶 |
-| グローバル | `memory/global_context.md` | システム全体の設定、女皇陛下の好み |
-| プロジェクト | `context/{project}.md` | プロジェクト固有の知見 |
+| レイヤー     | 場所                         | 用途                               |
+| ------------ | ---------------------------- | ---------------------------------- |
+| Memory MCP   | `memory/kairai_memory.jsonl` | セッションを跨ぐ長期記憶           |
+| グローバル   | `memory/global_context.md`   | システム全体の設定、女皇陛下の好み |
+| プロジェクト | `context/{project}.md`       | プロジェクト固有の知見             |
 
 この設計により：
+
 - どのボスコ/Bosco（機動兵）でも任意のプロジェクトを担当可能
 - エージェント切り替え時もコンテキスト継続
 - 関心の分離が明確
@@ -364,15 +374,15 @@ screenshot:
 
 すべてのプロジェクトで同じ7セクション構成のテンプレートを使用：
 
-| セクション | 目的 |
-|-----------|------|
-| What | プロジェクトの概要説明 |
-| Why | 目的と成功の定義 |
-| Who | 関係者と責任者 |
-| Constraints | 期限、予算、制約 |
+| セクション    | 目的                             |
+| ------------- | -------------------------------- |
+| What          | プロジェクトの概要説明           |
+| Why           | 目的と成功の定義                 |
+| Who           | 関係者と責任者                   |
+| Constraints   | 期限、予算、制約                 |
 | Current State | 進捗、次のアクション、ブロッカー |
-| Decisions | 決定事項と理由の記録 |
-| Notes | 自由記述のメモ・気づき |
+| Decisions     | 決定事項と理由の記録             |
+| Notes         | 自由記述のメモ・気づき           |
 
 統一フォーマットにより、どのプロジェクトでも同じ構造で情報を参照可能。
 
@@ -380,11 +390,11 @@ screenshot:
 
 ### 🧠 モデル設定
 
-| エージェント | モデル | 思考モード | 理由 |
-|-------------|--------|----------|------|
-| 傀儡/KAIRAI（執行官） | Opus | 無効 | 委譲とダッシュボード更新に深い推論は不要 |
-| プロンニア/Pulonia（執事） | デフォルト | 有効 | タスク分配には慎重な判断が必要 |
-| ボスコ/Bosco（機動兵） | デフォルト | 有効 | 実装作業にはフル機能が必要 |
+| エージェント               | モデル     | 思考モード | 理由                                     |
+| -------------------------- | ---------- | ---------- | ---------------------------------------- |
+| 傀儡/KAIRAI（執行官）      | Opus       | 無効       | 委譲とダッシュボード更新に深い推論は不要 |
+| プロンニア/Pulonia（執事） | デフォルト | 有効       | タスク分配には慎重な判断が必要           |
+| ボスコ/Bosco（機動兵）     | デフォルト | 有効       | 実装作業にはフル機能が必要               |
 
 傀儡/KAIRAI（執行官）は `MAX_THINKING_TOKENS=0` で拡張思考を無効化し、高レベルな判断にはOpusの能力を維持しつつ、レイテンシとコストを削減。
 
@@ -426,6 +436,7 @@ screenshot:
 **1. スキルはコミット対象外**
 
 `.claude/commands/` 配下のスキルはリポジトリにコミットしない設計。理由：
+
 - 各ユーザの業務・ワークフローは異なる
 - 汎用的なスキルを押し付けるのではなく、ユーザが自分に必要なスキルを育てていく
 
@@ -452,6 +463,7 @@ MCP（Model Context Protocol）サーバはClaudeの機能を拡張します。�
 ### MCPとは？
 
 MCPサーバはClaudeに外部ツールへのアクセスを提供します：
+
 - **Notion MCP** → Notionページの読み書き
 - **GitHub MCP** → PR作成、Issue管理
 - **Memory MCP** → セッション間で記憶を保持
@@ -601,12 +613,14 @@ language: en   # 日本語 + 英訳併記
 <summary><b>よく使うワークフロー</b>（クリックで展開）</summary>
 
 **通常の毎日の使用：**
+
 ```bash
 ./mission_start.sh          # 全て起動
 tmux attach-session -t kairai     # 接続してコマンドを出す
 ```
 
 **デバッグモード（手動制御）：**
+
 ```bash
 ./mission_start.sh -s       # セッションのみ作成
 
@@ -616,6 +630,7 @@ tmux send-keys -t multiagent:0.0 'claude --dangerously-skip-permissions' Enter
 ```
 
 **クラッシュ後の再起動：**
+
 ```bash
 # 既存セッションを終了
 tmux kill-session -t kairai
@@ -630,14 +645,14 @@ tmux kill-session -t multiagent
 <details>
 <summary><b>便利なエイリアス</b>（クリックで展開）</summary>
 
-`first_setup.sh` を実行すると、以下のエイリアスが `~/.bashrc` に自動追加されます：
+`first_setup.sh` を実行すると、以下のエイリアスが `~/.zshrc` に自動追加されます：
 
 ```bash
 alias css='cd /mnt/c/tools/multi-agent-kairai && ./mission_start.sh'  # セットアップ+任務開始
 alias csm='cd /mnt/c/tools/multi-agent-kairai'                              # ディレクトリ移動のみ
 ```
 
-※ エイリアスを反映するには `source ~/.bashrc` を実行するか、PowerShellで `wsl --shutdown` してからターミナルを開き直してください。
+※ エイリアスを反映するには `source ~/.zshrc` を実行するか、PowerShellで `wsl --shutdown` してからターミナルを開き直してください。
 
 </details>
 
@@ -712,6 +727,7 @@ claude --dangerously-skip-permissions --system-prompt "..."
 <summary><b>ワーカーが停止している？</b></summary>
 
 ワーカーのペインを確認：
+
 ```bash
 tmux attach-session -t multiagent
 # Ctrl+B の後に数字でペインを切り替え
@@ -723,14 +739,14 @@ tmux attach-session -t multiagent
 
 ## 📚 tmux クイックリファレンス
 
-| コマンド | 説明 |
-|----------|------|
-| `tmux attach -t kairai` | 傀儡/KAIRAI（執行官）に接続 |
-| `tmux attach -t multiagent` | ワーカーに接続 |
-| `Ctrl+B` の後 `0-8` | ペイン間を切り替え |
-| `Ctrl+B` の後 `d` | デタッチ（実行継続） |
-| `tmux kill-session -t kairai` | 傀儡/KAIRAI（執行官）セッションを停止 |
-| `tmux kill-session -t multiagent` | ワーカーセッションを停止 |
+| コマンド                          | 説明                                  |
+| --------------------------------- | ------------------------------------- |
+| `tmux attach -t kairai`           | 傀儡/KAIRAI（執行官）に接続           |
+| `tmux attach -t multiagent`       | ワーカーに接続                        |
+| `Ctrl+B` の後 `0-8`               | ペイン間を切り替え                    |
+| `Ctrl+B` の後 `d`                 | デタッチ（実行継続）                  |
+| `tmux kill-session -t kairai`     | 傀儡/KAIRAI（執行官）セッションを停止 |
+| `tmux kill-session -t multiagent` | ワーカーセッションを停止              |
 
 ---
 

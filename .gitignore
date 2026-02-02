@@ -1,3 +1,9 @@
+# macOS system files
+.DS_Store
+
+# Serena MCP data
+.serena/
+
 # Order file (internal use only)
 claude-kairai-orders.md
 

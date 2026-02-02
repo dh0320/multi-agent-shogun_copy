@@ -421,6 +421,13 @@ if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
 fi
 
 # 3x3グリッド作成（合計9ペイン）
+# ═══════════════════════════════════════════════════════════════════════════════
+# 重要: ペイン番号とボスコ番号の対応
+#   ペイン0 = pulonia（執事）
+#   ペイン1 = bosco1, ペイン2 = bosco2, ... ペイン8 = bosco8
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 3x3グリッド作成（合計9ペイン）
 # 最初に3列に分割
 tmux split-window -h -t "multiagent:0"
 tmux split-window -h -t "multiagent:0"
@@ -438,9 +445,9 @@ tmux select-pane -t "multiagent:0.6"
 tmux split-window -v
 tmux split-window -v
 
-# ペインタイトル設定（0: pulonia, 1-8: bosco1-8）
+# ペインタイトル設定（0: pulonia, 1-8: bosco-8）
 PANE_TITLES=("pulonia" "bosco1" "bosco2" "bosco3" "bosco4" "bosco5" "bosco6" "bosco7" "bosco8")
-# 色設定（pulonia: 赤, bosco: 青）
+# 色設定（pulonia: 赤, ashigaru: 青）
 PANE_COLORS=("red" "blue" "blue" "blue" "blue" "blue" "blue" "blue" "blue")
 
 for i in {0..8}; do
@@ -666,8 +673,8 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  │  tmux send-keys -t kairai 'claude --dangerously-skip-permissions' Enter │"
     echo "  │                                                          │"
     echo "  │  # 執事・機動兵を一斉召喚                                   │"
-    echo "  │  for i in {0..8}; do \\                                   │"
-    echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
+    echo "  │  for i in {0..8}; do \\"
+    echo "  │    tmux send-keys -t multiagent:0.\$i \\                         │"
     echo "  │      'claude --dangerously-skip-permissions' Enter       │"
     echo "  │  done                                                    │"
     echo "  └──────────────────────────────────────────────────────────┘"

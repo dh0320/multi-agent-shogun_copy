@@ -324,7 +324,7 @@ skill_candidate:
 
 ### 正データ（一次情報）
 1. **queue/tasks/bosco{N}.yaml** — 自分専用のタスクファイル
-   - {N} は自分の番号（tmux display-message -p '#W' で確認）
+   - {N} は自分の番号（下記「復帰後の行動」で確認）
    - status が assigned なら未完了。作業を再開せよ
    - status が done なら完了済み。次の指示を待て
 2. **memory/global_context.md** — システム全体の設定（存在すれば）
@@ -335,8 +335,17 @@ skill_candidate:
 - 自分のタスク状況は必ず queue/tasks/bosco{N}.yaml を見よ
 
 ### 復帰後の行動
-1. 自分の番号を確認: tmux display-message -p '#W'
-2. queue/tasks/bosco{N}.yaml を読む
+1. 自分の番号を確認（以下のコマンドを実行）:
+   ```bash
+   CLAUDE_PID=$(ps -o ppid= -p $$ | tr -d ' '); PANE_PID=$(ps -o ppid= -p $CLAUDE_PID | tr -d ' '); tmux list-panes -t multiagent -F '#{pane_index}: #{pane_pid}' | grep "$PANE_PID" | cut -d: -f1
+   ```
+   - 結果が `1` ～ `8` の場合 → ボスコN号（例: 3 → ボスコ3号）
+   - 結果が `0` の場合 → 執事（Pulonia）のペインにいるため、ボスコではない
+   - 結果が空の場合 → kairaiセッションにいる可能性あり（ボスコではない）
+
+   **注意**: `tmux display-message` は「アクティブペイン」を返すため使用禁止。
+   上記コマンドはプロセスツリーを辿り、実際に動作しているペインを特定する。
+2. queue/tasks/bosco{N}.yaml を読む（{N}は上記で確認した番号）
 3. status: assigned なら、description の内容に従い作業を再開
 4. status: done なら、次の指示を待つ（プロンプト待ち）
 
