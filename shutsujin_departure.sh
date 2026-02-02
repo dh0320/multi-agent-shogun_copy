@@ -405,9 +405,8 @@ log_success "  └─ ダッシュボード初期化完了 (言語: $LANG_SETTIN
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5: multiagentセッション作成（9ペイン：karo + ashigaru1-8）
+# STEP 5: tmux の存在確認 + セッション作成
 # ═══════════════════════════════════════════════════════════════════════════════
-# tmux の存在確認
 if ! command -v tmux &> /dev/null; then
     echo ""
     echo "  ╔════════════════════════════════════════════════════════╗"
@@ -422,6 +421,31 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5a: shogun セッション作成（1ペイン・window 0 を必ず確保）
+# ═══════════════════════════════════════════════════════════════════════════════
+log_war "👑 将軍の本陣を構築中..."
+
+# shogun セッションがなければ作る（-s 時もここで必ず shogun が存在するようにする）
+# window 0 のみ作成し -n main で名前付け（第二 window にするとアタッチ時に空ペインが開くため 1 window に限定）
+if ! tmux has-session -t shogun 2>/dev/null; then
+    tmux new-session -d -s shogun -n main
+fi
+
+# 将軍ペインはウィンドウ名 "main" で指定（base-index 1 環境でも動く）
+SHOGUN_PROMPT=$(generate_prompt "将軍" "magenta" "$SHELL_SETTING")
+tmux send-keys -t shogun:main "cd \"$(pwd)\" && export PS1='${SHOGUN_PROMPT}' && clear" Enter
+tmux select-pane -t shogun:main -P 'bg=#002b36'  # 将軍の Solarized Dark
+
+log_success "  └─ 将軍の本陣、構築完了"
+echo ""
+
+# pane-base-index を取得（1 の環境ではペインは 1,2,... になる）
+PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5b: multiagent セッション作成（9ペイン：karo + ashigaru1-8）
+# ═══════════════════════════════════════════════════════════════════════════════
 log_war "⚔️ 家老・足軽の陣を構築中（9名配備）..."
 
 # 最初のペイン作成
@@ -442,20 +466,21 @@ if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
 fi
 
 # 3x3グリッド作成（合計9ペイン）
+# ペイン番号は pane-base-index に依存（0 または 1）
 # 最初に3列に分割
-tmux split-window -h -t "multiagent:0"
-tmux split-window -h -t "multiagent:0"
+tmux split-window -h -t "multiagent:agents"
+tmux split-window -h -t "multiagent:agents"
 
 # 各列を3行に分割
-tmux select-pane -t "multiagent:0.0"
+tmux select-pane -t "multiagent:agents.${PANE_BASE}"
 tmux split-window -v
 tmux split-window -v
 
-tmux select-pane -t "multiagent:0.3"
+tmux select-pane -t "multiagent:agents.$((PANE_BASE+3))"
 tmux split-window -v
 tmux split-window -v
 
-tmux select-pane -t "multiagent:0.6"
+tmux select-pane -t "multiagent:agents.$((PANE_BASE+6))"
 tmux split-window -v
 tmux split-window -v
 
@@ -465,42 +490,17 @@ PANE_TITLES=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" 
 PANE_COLORS=("red" "blue" "blue" "blue" "blue" "blue" "blue" "blue" "blue")
 
 for i in {0..8}; do
-    tmux select-pane -t "multiagent:0.$i" -T "${PANE_TITLES[$i]}"
+    p=$((PANE_BASE + i))
+    tmux select-pane -t "multiagent:agents.${p}" -T "${PANE_TITLES[$i]}"
     PROMPT_STR=$(generate_prompt "${PANE_TITLES[$i]}" "${PANE_COLORS[$i]}" "$SHELL_SETTING")
-    tmux send-keys -t "multiagent:0.$i" "cd \"$(pwd)\" && export PS1='${PROMPT_STR}' && clear" Enter
+    tmux send-keys -t "multiagent:agents.${p}" "cd \"$(pwd)\" && export PS1='${PROMPT_STR}' && clear" Enter
 done
 
 log_success "  └─ 家老・足軽の陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: shogunセッション作成（1ペイン）
-# ═══════════════════════════════════════════════════════════════════════════════
-log_war "👑 将軍の本陣を構築中..."
-if ! tmux new-session -d -s shogun 2>/dev/null; then
-    echo ""
-    echo "  ╔════════════════════════════════════════════════════════════╗"
-    echo "  ║  [ERROR] Failed to create tmux session 'shogun'          ║"
-    echo "  ║  tmux セッション 'shogun' の作成に失敗しました           ║"
-    echo "  ╠════════════════════════════════════════════════════════════╣"
-    echo "  ║  An existing session may be running.                     ║"
-    echo "  ║  既存セッションが残っている可能性があります              ║"
-    echo "  ║                                                          ║"
-    echo "  ║  Check: tmux ls                                          ║"
-    echo "  ║  Kill:  tmux kill-session -t shogun                      ║"
-    echo "  ╚════════════════════════════════════════════════════════════╝"
-    echo ""
-    exit 1
-fi
-SHOGUN_PROMPT=$(generate_prompt "将軍" "magenta" "$SHELL_SETTING")
-tmux send-keys -t shogun "cd \"$(pwd)\" && export PS1='${SHOGUN_PROMPT}' && clear" Enter
-tmux select-pane -t shogun:0.0 -P 'bg=#002b36'  # 将軍の Solarized Dark
-
-log_success "  └─ 将軍の本陣、構築完了"
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# STEP 7: AI CLI 起動（--setup-only でスキップ）
+# STEP 6: AI CLI 起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
     if [ "$CLI_ADAPTER_AVAILABLE" = true ]; then
@@ -548,8 +548,8 @@ if [ "$SETUP_ONLY" = false ]; then
             fi
         fi
 
-        tmux send-keys -t shogun "$SHOGUN_CMD"
-        tmux send-keys -t shogun Enter
+        tmux send-keys -t shogun:main "$SHOGUN_CMD"
+        tmux send-keys -t shogun:main Enter
 
         if [ "$SHOGUN_CLI" = "copilot" ]; then
             log_info "  │  └─ 将軍、召喚完了 ⚡ (GitHub Copilot CLI)"
@@ -565,6 +565,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
         for i in {0..8}; do
             AGENT_NAME="${AGENT_NAMES[$i]}"
+            p=$((PANE_BASE + i))
 
             if [ -n "$FORCE_CLI" ]; then
                 AGENT_CLI="$FORCE_CLI"
@@ -590,8 +591,8 @@ if [ "$SETUP_ONLY" = false ]; then
                 fi
             fi
 
-            tmux send-keys -t "multiagent:0.$i" "$AGENT_CMD"
-            tmux send-keys -t "multiagent:0.$i" Enter
+            tmux send-keys -t "multiagent:agents.${p}" "$AGENT_CMD"
+            tmux send-keys -t "multiagent:agents.${p}" Enter
         done
 
         log_info "  └─ 家老・足軽、召喚完了"
@@ -620,16 +621,17 @@ if [ "$SETUP_ONLY" = false ]; then
         log_war "👑 全軍に Claude Code を召喚中..."
 
         # 将軍
-        tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
-        tmux send-keys -t shogun Enter
+        tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t shogun:main Enter
         log_info "  └─ 将軍、召喚完了"
 
         sleep 1
 
         # 家老 + 足軽（9ペイン）
         for i in {0..8}; do
-            tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
-            tmux send-keys -t "multiagent:0.$i" Enter
+            p=$((PANE_BASE + i))
+            tmux send-keys -t "multiagent:agents.${p}" "claude --dangerously-skip-permissions"
+            tmux send-keys -t "multiagent:agents.${p}" Enter
         done
         log_info "  └─ 家老・足軽、召喚完了"
 
@@ -638,7 +640,7 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # STEP 8: 各エージェントに指示書を読み込ませる
+    # STEP 7: 各エージェントに指示書を読み込ませる
     # ═══════════════════════════════════════════════════════════════════════════
     log_war "📜 各エージェントに指示書を読み込ませ中..."
     echo ""
@@ -714,7 +716,7 @@ NINJA_EOF
         COPILOT_STARTED=false
         for i in {1..30}; do
             # Copilot CLI のプロンプト "? " を検知
-            if tmux capture-pane -t shogun -p | tail -5 | grep -q "^\? "; then
+            if tmux capture-pane -t shogun:main -p | tail -5 | grep -q "^\? "; then
                 echo "  └─ 将軍の GitHub Copilot CLI 起動確認完了（${i}秒）"
                 COPILOT_STARTED=true
                 break
@@ -729,7 +731,7 @@ NINJA_EOF
     else
         echo "  Claude Code の起動を待機中（最大30秒）..."
         for i in {1..30}; do
-            if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
+            if tmux capture-pane -t shogun:main -p | grep -q "bypass permissions"; then
                 echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
                 break
             fi
@@ -739,24 +741,25 @@ NINJA_EOF
 
     # 将軍に指示書を読み込ませる
     log_info "  └─ 将軍に指示書を伝達中..."
-    tmux send-keys -t shogun "instructions/shogun.md を読んで役割を理解せよ。"
+    tmux send-keys -t shogun:main "instructions/shogun.md を読んで役割を理解せよ。"
     sleep 0.5
-    tmux send-keys -t shogun Enter
+    tmux send-keys -t shogun:main Enter
 
     # 家老に指示書を読み込ませる
     sleep 2
     log_info "  └─ 家老に指示書を伝達中..."
-    tmux send-keys -t "multiagent:0.0" "instructions/karo.md を読んで役割を理解せよ。"
+    tmux send-keys -t "multiagent:agents.${PANE_BASE}" "instructions/karo.md を読んで役割を理解せよ。"
     sleep 0.5
-    tmux send-keys -t "multiagent:0.0" Enter
+    tmux send-keys -t "multiagent:agents.${PANE_BASE}" Enter
 
     # 足軽に指示書を読み込ませる（1-8）
     sleep 2
     log_info "  └─ 足軽に指示書を伝達中..."
     for i in {1..8}; do
-        tmux send-keys -t "multiagent:0.$i" "instructions/ashigaru.md を読んで役割を理解せよ。汝は足軽${i}号である。"
+        p=$((PANE_BASE + i))
+        tmux send-keys -t "multiagent:agents.${p}" "instructions/ashigaru.md を読んで役割を理解せよ。汝は足軽${i}号である。"
         sleep 0.3
-        tmux send-keys -t "multiagent:0.$i" Enter
+        tmux send-keys -t "multiagent:agents.${p}" Enter
         sleep 0.5
     done
 
@@ -765,7 +768,7 @@ NINJA_EOF
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 9: 環境確認・完了メッセージ
+# STEP 8: 環境確認・完了メッセージ
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🔍 陣容を確認中..."
 echo ""
@@ -821,11 +824,12 @@ if [ "$SETUP_ONLY" = true ]; then
         echo "  手動でGitHub Copilot CLIを起動するには:"
         echo "  ┌──────────────────────────────────────────────────────────┐"
         echo "  │  # 将軍を召喚                                            │"
-        echo "  │  tmux send-keys -t shogun 'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
+        echo "  │  tmux send-keys -t shogun:main \\                         │"
+        echo "  │    'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
         echo "  │                                                          │"
-        echo "  │  # 家老・足軽を一斉召喚                                   │"
-        echo "  │  for i in {0..8}; do \\                                   │"
-        echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
+        echo "  │  # 家老・足軽を一斉召喚                                  │"
+        echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do \\      │"
+        echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
         echo "  │      'copilot --allow-all --allow-all-tools --allow-all-paths' Enter │"
     else
         echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
@@ -833,11 +837,12 @@ if [ "$SETUP_ONLY" = true ]; then
         echo "  手動でClaude Codeを起動するには:"
         echo "  ┌──────────────────────────────────────────────────────────┐"
         echo "  │  # 将軍を召喚                                            │"
-        echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
+        echo "  │  tmux send-keys -t shogun:main \\                         │"
+        echo "  │    'claude --dangerously-skip-permissions' Enter         │"
         echo "  │                                                          │"
-        echo "  │  # 家老・足軽を一斉召喚                                   │"
-        echo "  │  for i in {0..8}; do \\                                   │"
-        echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
+        echo "  │  # 家老・足軽を一斉召喚                                  │"
+        echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do \\      │"
+        echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
         echo "  │      'claude --dangerously-skip-permissions' Enter       │"
     fi
     echo "  │  done                                                    │"
@@ -863,7 +868,7 @@ echo "  ════════════════════════
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 10: Windows Terminal でタブを開く（-t オプション時のみ）
+# STEP 9: Windows Terminal でタブを開く（-t オプション時のみ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$OPEN_TERMINAL" = true ]; then
     log_info "📺 Windows Terminal でタブを展開中..."
