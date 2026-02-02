@@ -328,7 +328,7 @@ if [ "$LANG_SETTING" = "ja" ]; then
 # 📊 ステータスレポート
 最終更新: ${TIMESTAMP}
 
-## 🚨 要対応 - 女皇陛下のご判断をお待ちしております
+## 🚨 要対応 - 旅人のご判断をお待ちしております
 なし
 
 ## 🔄 進行中 - 現在作業中
@@ -356,7 +356,7 @@ else
 # 📊 ステータスレポート (Status Report)
 最終更新 (Last Updated): ${TIMESTAMP}
 
-## 🚨 要対応 - 女皇陛下のご判断をお待ちしております (Action Required - Awaiting Lord's Decision)
+## 🚨 要対応 - 旅人のご判断をお待ちしております (Action Required - Awaiting Lord's Decision)
 なし (None)
 
 ## 🔄 進行中 - 現在作業中 (In Progress - Currently Working)
