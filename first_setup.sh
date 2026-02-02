@@ -326,9 +326,9 @@ else
 fi
 
 # ============================================================
-# STEP 4.5: GitHub Copilot CLI 確認（オプション）
+# STEP 6: GitHub Copilot CLI 確認（オプション）
 # ============================================================
-log_step "STEP 4.5: GitHub Copilot CLI 確認（オプション）"
+log_step "STEP 6: GitHub Copilot CLI 確認（オプション）"
 
 echo "  GitHub Copilot CLI は multi-agent-shogun で使用可能なオプションのCLIです。"
 echo "  Claude Code CLIの代わりに、またはClaude Code CLIと併用できます。"
@@ -377,9 +377,9 @@ else
 fi
 
 # ============================================================
-# STEP 6: ディレクトリ構造作成
+# STEP 7: ディレクトリ構造作成
 # ============================================================
-log_step "STEP 6: ディレクトリ構造作成"
+log_step "STEP 7: ディレクトリ構造作成"
 
 # 必要なディレクトリ一覧
 DIRECTORIES=(
@@ -418,9 +418,9 @@ fi
 RESULTS+=("ディレクトリ構造: OK (作成:$CREATED_COUNT, 既存:$EXISTED_COUNT)")
 
 # ============================================================
-# STEP 7: 設定ファイル初期化
+# STEP 8: 設定ファイル初期化
 # ============================================================
-log_step "STEP 7: 設定ファイル確認"
+log_step "STEP 8: 設定ファイル確認"
 
 # config/settings.yaml
 if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
@@ -429,8 +429,9 @@ if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     # テンプレートが存在すればそれを使用
     if [ -f "$SCRIPT_DIR/config/settings.yaml.template" ]; then
         cp "$SCRIPT_DIR/config/settings.yaml.template" "$SCRIPT_DIR/config/settings.yaml"
-        # パス変数を置換
+        # パス変数とプレースホルダーを置換
         sed -i.bak "s|\$SCRIPT_DIR|$SCRIPT_DIR|g" "$SCRIPT_DIR/config/settings.yaml"
+        sed -i.bak "s|{{USERNAME}}|$(whoami)|g" "$SCRIPT_DIR/config/settings.yaml"
         rm -f "$SCRIPT_DIR/config/settings.yaml.bak"
         log_success "settings.yaml をテンプレートから作成しました"
     else
@@ -507,9 +508,9 @@ fi
 RESULTS+=("設定ファイル: OK")
 
 # ============================================================
-# STEP 8: 足軽用タスク・レポートファイル初期化
+# STEP 9: 足軽用タスク・レポートファイル初期化
 # ============================================================
-log_step "STEP 8: キューファイル初期化"
+log_step "STEP 9: キューファイル初期化"
 
 # 足軽用タスクファイル作成
 for i in {1..8}; do
@@ -547,9 +548,9 @@ log_info "足軽レポートファイル (1-8) を確認/作成しました"
 RESULTS+=("キューファイル: OK")
 
 # ============================================================
-# STEP 9: スクリプト実行権限付与
+# STEP 10: スクリプト実行権限付与
 # ============================================================
-log_step "STEP 9: 実行権限設定"
+log_step "STEP 10: 実行権限設定"
 
 SCRIPTS=(
     "setup.sh"
@@ -567,9 +568,9 @@ done
 RESULTS+=("実行権限: OK")
 
 # ============================================================
-# STEP 10: bashrc alias設定
+# STEP 11: bashrc alias設定
 # ============================================================
-log_step "STEP 10: alias設定"
+log_step "STEP 11: alias設定"
 
 # alias追加対象ファイル
 BASHRC_FILE="$HOME/.bashrc"
@@ -634,9 +635,9 @@ fi
 RESULTS+=("alias設定: OK")
 
 # ============================================================
-# STEP 11: Memory MCP セットアップ
+# STEP 12: Memory MCP セットアップ
 # ============================================================
-log_step "STEP 11: Memory MCP セットアップ"
+log_step "STEP 12: Memory MCP セットアップ"
 
 if command -v claude &> /dev/null; then
     # Memory MCP が既に設定済みか確認

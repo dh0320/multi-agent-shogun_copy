@@ -8,6 +8,10 @@
 #   cli_command=$(build_cli_command "shogun" "$cli_type" "config/settings.yaml")
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# 間接変数展開の許可リスト
+# セキュリティ上、展開可能な変数名をここに列挙する
+_ALLOWED_VAR_EXPANSIONS="ANTHROPIC_API_KEY GITHUB_TOKEN OPENAI_API_KEY HOME USER PATH"
+
 # CLIタイプを取得（エージェント名から）
 # 引数:
 #   $1: エージェント名 (shogun, karo, ashigaru1-8)
@@ -25,13 +29,20 @@ get_cli_type() {
 
     # エージェント固有の設定をチェック（厳密なインデントマッチング）
     local agent_type=$(awk -v agent="$agent_name" '
+        /^[[:space:]]*#/ { next }
+        { gsub(/\t/, "    ") }
         /^cli:/ { in_cli=1; next }
         in_cli && /^  agents:/ { in_agents=1; next }
         in_agents && $0 ~ "^    " agent ":" { in_target=1; next }
-        in_target && /^      type:/ { print $2; exit }
+        in_target && /^      type:/ {
+            val=$0; sub(/^.*type:[[:space:]]*/, "", val)
+            gsub(/["'"'"']/, "", val)
+            sub(/[[:space:]]*#.*$/, "", val)
+            print val; exit
+        }
         in_target && /^    [a-z]/ { exit }
         /^[a-z]/ { in_cli=0; in_agents=0; in_target=0 }
-    ' "$yaml_config" | tr -d '"' | tr -d "'")
+    ' "$yaml_config")
 
     if [ -n "$agent_type" ]; then
         # バリデーション: claude または copilot のみ許可
@@ -45,9 +56,18 @@ get_cli_type() {
         esac
     else
         # デフォルトCLIタイプを取得
-        local default_type=$(awk '/^cli:/ { in_cli=1; next }
-                                   in_cli && /^  default:/ { print $2; exit }
-                                   /^[a-z]/ { exit }' "$yaml_config" | tr -d '"' | tr -d "'")
+        local default_type=$(awk '
+            /^[[:space:]]*#/ { next }
+            { gsub(/\t/, "    ") }
+            /^cli:/ { in_cli=1; next }
+            in_cli && /^  default:/ {
+                val=$0; sub(/^.*default:[[:space:]]*/, "", val)
+                gsub(/["'"'"']/, "", val)
+                sub(/[[:space:]]*#.*$/, "", val)
+                print val; exit
+            }
+            in_cli && /^[a-z]/ { exit }
+        ' "$yaml_config")
 
         # バリデーション
         case "$default_type" in
@@ -59,6 +79,31 @@ get_cli_type() {
                 ;;
         esac
     fi
+}
+
+# Copilot用のオプションを settings.yaml から取得
+# 引数:
+#   $1: settings.yamlのパス
+# 出力: オプション文字列（なければ空文字）
+_get_copilot_options() {
+    local yaml_config="$1"
+
+    if [ ! -f "$yaml_config" ]; then
+        return 0
+    fi
+
+    awk '
+        /^[[:space:]]*#/ { next }
+        { gsub(/\t/, "    ") }
+        /^cli:/ { in_cli=1; next }
+        in_cli && /copilot_options:/ {
+            val=$0; sub(/^.*copilot_options:[[:space:]]*/, "", val)
+            gsub(/["'"'"']/, "", val)
+            sub(/[[:space:]]*#.*$/, "", val)
+            print val; exit
+        }
+        in_cli && /^[a-z]/ { exit }
+    ' "$yaml_config"
 }
 
 # エージェント用のCLIコマンドを構築
@@ -86,7 +131,7 @@ build_cli_command() {
             # エージェント固有のモデル設定
             local model=$(get_agent_model "$agent_name" "$yaml_config")
             if [ -n "$model" ]; then
-                options="--model \"$model\""
+                options="--model $model"
             fi
 
             # デフォルトオプション追加
@@ -106,8 +151,12 @@ build_cli_command() {
                 instructions_copy="cp .github/copilot-instructions-${agent_name}.md .github/copilot-instructions.md 2>/dev/null || true && "
             fi
 
-            # デフォルトオプション
-            options="--allow-all --allow-all-tools --allow-all-paths"
+            # パーミッション設定（settings.yaml から取得、なければデフォルト）
+            local copilot_opts=$(_get_copilot_options "$yaml_config")
+            if [ -z "$copilot_opts" ]; then
+                copilot_opts="--allow-all --allow-all-tools --allow-all-paths"
+            fi
+            options="$copilot_opts"
 
             # コピーコマンド + copilot コマンドを結合
             base_cmd="${instructions_copy}${base_cmd}"
@@ -121,7 +170,7 @@ build_cli_command() {
 
     # 環境変数 + コマンド + オプション
     if [ -n "$env_vars" ]; then
-        echo "${env_vars} ${base_cmd} ${options}"
+        echo "export ${env_vars} && ${base_cmd} ${options}"
     else
         echo "${base_cmd} ${options}"
     fi
@@ -141,13 +190,20 @@ get_agent_model() {
     fi
 
     awk -v agent="$agent_name" '
+        /^[[:space:]]*#/ { next }
+        { gsub(/\t/, "    ") }
         /^cli:/ { in_cli=1; next }
         in_cli && /^  agents:/ { in_agents=1; next }
         in_agents && $0 ~ "^    " agent ":" { in_target=1; next }
-        in_target && /^      model:/ { print $2; exit }
+        in_target && /^      model:/ {
+            val=$0; sub(/^.*model:[[:space:]]*/, "", val)
+            gsub(/["'"'"']/, "", val)
+            sub(/[[:space:]]*#.*$/, "", val)
+            print val; exit
+        }
         in_target && /^    [a-z]/ { exit }
-        /^[a-z]/ { exit }
-    ' "$yaml_config" | tr -d '"' | tr -d "'"
+        in_cli && /^[a-z]/ { exit }
+    ' "$yaml_config"
 }
 
 # エージェント固有の環境変数を取得
@@ -163,51 +219,60 @@ get_agent_env() {
         return 0
     fi
 
-    # エージェント設定ブロックを抽出
+    # awkで env セクションの key=value ペアを抽出
+    local raw_pairs=$(awk -v agent="$agent_name" '
+        /^[[:space:]]*#/ { next }
+        { gsub(/\t/, "    ") }
+        /^cli:/ { in_cli=1; next }
+        in_cli && /^  agents:/ { in_agents=1; next }
+        in_agents && $0 ~ "^    " agent ":" { in_target=1; next }
+        in_target && /^      env:/ { in_env=1; next }
+        in_target && in_env && /^        [A-Z_]/ {
+            key=$0; sub(/^[[:space:]]*/, "", key)
+            sub(/:.*$/, "", key)
+            val=$0; sub(/^[^:]*:[[:space:]]*/, "", val)
+            gsub(/["'"'"']/, "", val)
+            sub(/[[:space:]]*#.*$/, "", val)
+            print key "=" val
+        }
+        in_target && in_env && /^      [a-z]/ { exit }
+        in_target && /^    [a-z]/ { exit }
+        in_cli && /^[a-z]/ { exit }
+    ' "$yaml_config")
+
     local env_str=""
-    local in_agent=false
-    local in_env=false
+    while IFS= read -r pair; do
+        [ -z "$pair" ] && continue
 
-    while IFS= read -r line; do
-        # エージェントセクション開始（厳密なインデントチェック）
-        if echo "$line" | grep -q "^    ${agent_name}:"; then
-            in_agent=true
-            continue
-        fi
+        local key="${pair%%=*}"
+        local value="${pair#*=}"
 
-        # 次のエージェントセクション開始（終了）
-        if [ "$in_agent" = true ] && echo "$line" | grep -q "^    [a-z]"; then
-            break
-        fi
+        # 環境変数の置換（${VAR_NAME} 形式）— 許可リスト方式
+        if echo "$value" | grep -q '^\${.*}$'; then
+            local var_name=$(echo "$value" | sed 's/\${//g' | sed 's/}//g')
 
-        # env セクション開始
-        if [ "$in_agent" = true ] && echo "$line" | grep -q "^      env:"; then
-            in_env=true
-            continue
-        fi
-
-        # env の値を取得
-        if [ "$in_agent" = true ] && [ "$in_env" = true ]; then
-            if echo "$line" | grep -q "^        [A-Z_]"; then
-                local key=$(echo "$line" | awk '{print $1}' | tr -d ':')
-                local value=$(echo "$line" | awk '{print $2}' | tr -d '"' | tr -d "'")
-
-                # 環境変数の置換（${VAR_NAME} 形式）
-                if echo "$value" | grep -q '^\${.*}$'; then
-                    local var_name=$(echo "$value" | sed 's/\${//g' | sed 's/}//g')
-                    value="${!var_name}"
+            # 許可リストチェック
+            local allowed=false
+            for allowed_var in $_ALLOWED_VAR_EXPANSIONS; do
+                if [ "$var_name" = "$allowed_var" ]; then
+                    allowed=true
+                    break
                 fi
+            done
 
-                if [ -n "$env_str" ]; then
-                    env_str="$env_str "
-                fi
-                env_str="${env_str}${key}=${value}"
-            elif echo "$line" | grep -q "^      [a-z]"; then
-                # env セクション終了
-                break
+            if [ "$allowed" = true ]; then
+                value="${!var_name}"
+            else
+                echo "Warning: unauthorized variable expansion: \${$var_name}" >&2
+                value=""
             fi
         fi
-    done < "$yaml_config"
+
+        if [ -n "$env_str" ]; then
+            env_str="$env_str "
+        fi
+        env_str="${env_str}${key}=${value}"
+    done <<< "$raw_pairs"
 
     echo "$env_str"
 }

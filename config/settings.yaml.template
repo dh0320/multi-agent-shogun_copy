@@ -9,6 +9,9 @@ cli:
   # デフォルトCLI（claude または copilot）
   default: claude
 
+  # Copilot CLIのパーミッション設定（デフォルト値、必要に応じて制限可）
+  copilot_options: "--allow-all --allow-all-tools --allow-all-paths"
+
   # エージェント毎の個別設定（オプション）
   # agents:
   #   shogun:
