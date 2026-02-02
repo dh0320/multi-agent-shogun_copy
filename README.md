@@ -187,7 +187,7 @@ Then restart your computer and run `install.bat` again.
 |--------|---------|-------------|
 | `install.bat` | Windows: WSL2 + Ubuntu setup | First time only |
 | `first_setup.sh` | Installs tmux, Node.js, Claude Code CLI + configures Memory MCP | First time only |
-| `mission_start.sh` | Creates tmux sessions + starts Claude Code + loads instructions | Every day |
+| `mission_start.sh` | Creates tmux sessions + starts Claude/Codex + loads instructions | Every day |
 
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed (auto-install if missing)
@@ -196,7 +196,9 @@ Then restart your computer and run `install.bat` again.
 
 ### What `mission_start.sh` does:
 - ✅ Creates tmux sessions (kairai + multiagent)
-- ✅ Launches Claude Code on all agents
+- ✅ Launches Claude Code for Kairai/Pulonia
+- ✅ Launches Bosco with fixed engines (1-4: Claude / 5-8: Codex)
+- ✅ If Codex is not installed, Bosco 5-8 fall back to Claude
 - ✅ Automatically loads instruction files for each agent
 - ✅ Resets queue files for a fresh start
 
@@ -218,6 +220,7 @@ If you prefer to install dependencies manually:
 | tmux | `sudo apt install tmux` | Terminal multiplexer |
 | Node.js v20+ | `nvm install 20` | Required for Claude Code CLI |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | Anthropic's official CLI |
+| Codex CLI | `npm install -g @openai/codex` | Used by Bosco 5-8 |
 
 </details>
 
@@ -318,6 +321,9 @@ Session 1: You say "I prefer simple solutions"
 Session 2: AI reads memory at startup
            → Won't suggest over-engineered solutions
 ```
+
+**Memory MCP is owned by the Claude side (Kairai/Pulonia).**  
+Bosco (Codex side) does not read learning memory and only executes assigned tasks.
 
 ### 📡 4. Event-Driven (No Polling)
 
@@ -566,7 +572,7 @@ language: en   # Japanese + English translation
 │      │                                                              │
 │      ├──▶ Reset queue files and dashboard                           │
 │      │                                                              │
-│      └──▶ Launch Claude Code on all agents                          │
+│      └──▶ Launch Claude/Codex (Kairai/Pulonia=Claude, Bosco fixed)   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -577,10 +583,10 @@ language: en   # Japanese + English translation
 <summary><b>mission_start.sh Options</b> (Click to expand)</summary>
 
 ```bash
-# Default: Full startup (tmux sessions + Claude Code launch)
+# Default: Full startup (tmux sessions + Claude/Codex launch)
 ./mission_start.sh
 
-# Session setup only (without launching Claude Code)
+# Session setup only (without launching CLI)
 ./mission_start.sh -s
 ./mission_start.sh --setup-only
 
@@ -608,7 +614,7 @@ tmux attach-session -t kairai     # Connect to give commands
 ```bash
 ./mission_start.sh -s       # Create sessions only
 
-# Manually start Claude Code on specific agents
+# Manually start CLI on specific agents
 tmux send-keys -t kairai:0 'claude --dangerously-skip-permissions' Enter
 tmux send-keys -t multiagent:0.0 'claude --dangerously-skip-permissions' Enter
 ```

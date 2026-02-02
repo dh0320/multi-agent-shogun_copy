@@ -1,0 +1,129 @@
+# タスク種別に基づくボスコ振り分けルール
+# 調査レポート（reports/claude_vs_codex_analysis.md）に基づき作成
+# 作成日: 2026-02-02
+
+version: "1.0"
+
+# 機動兵の構成
+bosco_assignment:
+  claude_bosco: [1, 2, 3, 4]  # Claude Code を使用
+  codex_bosco: [5, 6, 7, 8]   # Codex CLI を使用
+
+# タスク種別による振り分けルール
+routing_rules:
+  # Claude優先タスク（ボスコ1-4号に振る）
+  claude_priority:
+    - id: CLAUDE-001
+      task_type: "設計・アーキテクチャ検討"
+      reason: "大規模コンテキスト理解、俯瞰的な構造化と設計レビューに強い"
+      keywords: ["設計", "アーキテクチャ", "構成", "方針", "戦略"]
+
+    - id: CLAUDE-002
+      task_type: "コードレビュー（分析フェーズ）"
+      reason: "セキュリティ検出、品質分析、設計観点での評価に優れる"
+      keywords: ["レビュー", "review", "品質チェック", "セキュリティ"]
+
+    - id: CLAUDE-003
+      task_type: "ドキュメント作成"
+      reason: "品質・可読性重視の文章生成、長文対応に強い"
+      keywords: ["ドキュメント", "README", "説明", "仕様書", "マニュアル"]
+
+    - id: CLAUDE-004
+      task_type: "複雑なバグ修正・デバッグ"
+      reason: "深い推論、全体把握、原因分析に強い"
+      keywords: ["デバッグ", "原因調査", "複雑なバグ", "根本原因"]
+
+    - id: CLAUDE-005
+      task_type: "要件が曖昧なタスク"
+      reason: "仕様理解、要件整理、行間を読む能力に優れる"
+      keywords: ["要件整理", "仕様確認", "曖昧", "検討"]
+
+    - id: CLAUDE-006
+      task_type: "長いコンテキスト理解が必要なタスク"
+      reason: "200K-1Mトークンのコンテキストウィンドウを活用"
+      keywords: ["大規模", "全体把握", "横断", "統合"]
+
+  # Codex優先タスク（ボスコ5-8号に振る）
+  codex_priority:
+    - id: CODEX-001
+      task_type: "定型的な実装・コーディング"
+      reason: "高速な生成、CLI統合、リポジトリ操作に強い"
+      keywords: ["実装", "コーディング", "作成", "追加", "implement"]
+
+    - id: CODEX-002
+      task_type: "テスト作成・実行"
+      reason: "高速反復、既存環境との密着、テスト実行が得意"
+      keywords: ["テスト", "test", "単体テスト", "E2E", "検証"]
+
+    - id: CODEX-003
+      task_type: "リファクタリング（明確なパターン）"
+      reason: "大規模変更の自律反復、長時間セッション安定性"
+      keywords: ["リファクタ", "refactor", "整理", "リネーム"]
+
+    - id: CODEX-004
+      task_type: "単純なバグ修正"
+      reason: "コマンド実行と編集が一連で可能、高速対応"
+      keywords: ["バグ修正", "fix", "修正", "エラー対応"]
+
+    - id: CODEX-005
+      task_type: "CI失敗対応"
+      reason: "端末操作で再現・修正が可能"
+      keywords: ["CI", "ビルド失敗", "パイプライン", "GitHub Actions"]
+
+    - id: CODEX-006
+      task_type: "並列実行可能な独立タスク"
+      reason: "クラウドサンドボックスで並行タスク処理可能"
+      keywords: ["独立", "並列", "個別", "分割"]
+
+  # ハイブリッドタスク（両方を組み合わせる）
+  hybrid:
+    - id: HYBRID-001
+      task_type: "大規模リファクタリング"
+      workflow:
+        plan: claude      # 設計・リスク分析
+        implement: codex  # 変更の実施・テスト
+      keywords: ["大規模リファクタ", "移行", "刷新"]
+
+    - id: HYBRID-002
+      task_type: "コードレビュー + 修正"
+      workflow:
+        review: claude    # 設計観点で評価
+        fix: codex        # 修正パッチを適用
+      keywords: ["レビュー後修正", "指摘対応"]
+
+    - id: HYBRID-003
+      task_type: "最新情報調査 + 方針策定"
+      workflow:
+        research: codex   # Web Searchで情報取得
+        integrate: claude # 要約・方針化
+      keywords: ["調査", "最新情報", "動向"]
+
+# 振り分け判断の優先順位
+decision_priority:
+  1: "明示的な指示（執行官が指定した場合）"
+  2: "ハイブリッドタスクの判定"
+  3: "キーワードマッチング"
+  4: "タスク複雑度（高→Claude、低→Codex）"
+  5: "機動兵の空き状況"
+
+# コスト最適化ガイドライン
+cost_optimization:
+  low_complexity:
+    model: "codex-mini"
+    estimated_cost: "$0.45/task"
+    use_for: "単純な実装、定型タスク"
+
+  medium_complexity:
+    model: "gpt-5-codex"
+    estimated_cost: "$2.25/task"
+    use_for: "標準的な実装、テスト作成"
+
+  high_complexity:
+    model: "claude-sonnet-4.5"
+    estimated_cost: "$4.50/task"
+    use_for: "設計、分析、レビュー"
+
+  critical_complexity:
+    model: "claude-opus-4.5"
+    estimated_cost: "$7.50/task"
+    use_for: "複雑な判断、重要な設計決定"

@@ -4,7 +4,7 @@
 #
 # 使用方法:
 #   ./mission_start.sh           # 全エージェント起動（通常）
-#   ./mission_start.sh -s        # セットアップのみ（Claude起動なし）
+#   ./mission_start.sh -s        # セットアップのみ（CLI起動なし）
 #   ./mission_start.sh -h        # ヘルプ表示
 
 set -e
@@ -25,6 +25,98 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
+# CLI エンジン設定（Kairai/Pulonia は Claude 固定だが設定値は読み取る）
+CLI_ENGINE="claude"
+if [ -f "./config/settings.yaml" ]; then
+    CLI_ENGINE=$(grep "^cli_engine:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "claude")
+fi
+
+# Bosco エンジン割り当て（デフォルト: Claude 1-4 / Codex 5-8）
+BOSCO_CLAUDE_RANGE="1-4"
+BOSCO_CODEX_RANGE="5-8"
+if [ -f "./config/settings.yaml" ]; then
+    BOSCO_CLAUDE_RANGE=$(
+        awk '
+            /^[^[:space:]]/ {in=0}
+            $1=="bosco:" {in=1; next}
+            in && $1=="claude_range:" {print $2; exit}
+        ' ./config/settings.yaml | tr -d '"'
+    )
+    BOSCO_CODEX_RANGE=$(
+        awk '
+            /^[^[:space:]]/ {in=0}
+            $1=="bosco:" {in=1; next}
+            in && $1=="codex_range:" {print $2; exit}
+        ' ./config/settings.yaml | tr -d '"'
+    )
+fi
+if [ -z "$BOSCO_CLAUDE_RANGE" ]; then
+    BOSCO_CLAUDE_RANGE="1-4"
+fi
+if [ -z "$BOSCO_CODEX_RANGE" ]; then
+    BOSCO_CODEX_RANGE="5-8"
+fi
+
+# CLI オプション（デフォルト: Claude=--dangerously-skip-permissions / Codex=--full-auto）
+CLAUDE_OPTIONS="--dangerously-skip-permissions"
+CODEX_OPTIONS="--full-auto"
+if [ -f "./config/settings.yaml" ]; then
+    CLAUDE_OPTIONS=$(
+        awk '
+            /^[^[:space:]]/ {in=0}
+            $1=="cli_options:" {in=1; next}
+            in && $1=="claude:" {sub(/^ *claude:[ ]*/, "", $0); print $0; exit}
+        ' ./config/settings.yaml | tr -d '"'
+    )
+    CODEX_OPTIONS=$(
+        awk '
+            /^[^[:space:]]/ {in=0}
+            $1=="cli_options:" {in=1; next}
+            in && $1=="codex:" {sub(/^ *codex:[ ]*/, "", $0); print $0; exit}
+        ' ./config/settings.yaml | tr -d '"'
+    )
+fi
+if [ -z "$CLAUDE_OPTIONS" ]; then
+    CLAUDE_OPTIONS="--dangerously-skip-permissions"
+fi
+if [ -z "$CODEX_OPTIONS" ]; then
+    CODEX_OPTIONS="--full-auto"
+fi
+
+CLAUDE_CMD="claude ${CLAUDE_OPTIONS}"
+CODEX_CMD="codex ${CODEX_OPTIONS}"
+
+# 範囲判定（例: 1-4 / 7 / 2-2）
+in_range() {
+    local value="$1"
+    local range="$2"
+    if [[ "$range" =~ ^[0-9]+-[0-9]+$ ]]; then
+        local start="${range%-*}"
+        local end="${range#*-}"
+        if [ "$value" -ge "$start" ] && [ "$value" -le "$end" ]; then
+            return 0
+        fi
+    elif [[ "$range" =~ ^[0-9]+$ ]]; then
+        if [ "$value" -eq "$range" ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+bosco_engine_for_index() {
+    local index="$1"
+    if in_range "$index" "$BOSCO_CLAUDE_RANGE"; then
+        echo "claude"
+        return
+    fi
+    if in_range "$index" "$BOSCO_CODEX_RANGE"; then
+        echo "codex"
+        return
+    fi
+    echo "claude"
+}
+
 # 色付きログ関数
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -37,6 +129,12 @@ log_success() {
 log_war() {
     echo -e "\033[1;31m【動】\033[0m $1"
 }
+
+# Kairai/Pulonia は Claude 固定
+if [ "$CLI_ENGINE" != "claude" ]; then
+    log_info "cli_engine は Kairai/Pulonia 固定のため 'claude' を使用します（設定値: $CLI_ENGINE）"
+    CLI_ENGINE="claude"
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # プロンプト生成関数（bash/zsh対応）
@@ -101,7 +199,7 @@ while [[ $# -gt 0 ]]; do
             echo "使用方法: ./mission_start.sh [オプション]"
             echo ""
             echo "オプション:"
-            echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
+            echo "  -s, --setup-only    tmuxセッションのセットアップのみ（CLI起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
             echo "                      未指定時は config/settings.yaml の設定を使用"
@@ -109,7 +207,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "例:"
             echo "  ./mission_start.sh              # 全エージェント起動（通常の任務開始）"
-            echo "  ./mission_start.sh -s           # セットアップのみ（手動でClaude起動）"
+            echo "  ./mission_start.sh -s           # セットアップのみ（手動でCLI起動）"
             echo "  ./mission_start.sh -t           # 全エージェント起動 + ターミナルタブ展開"
             echo "  ./mission_start.sh -shell bash  # bash用プロンプトで起動"
             echo "  ./mission_start.sh -shell zsh   # zsh用プロンプトで起動"
@@ -489,7 +587,7 @@ echo ""
 # STEP 6: Claude Code 起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    # Claude Code CLI の存在チェック
+    # Claude Code CLI の存在チェック（Kairai/Pulonia は常に Claude）
     if ! command -v claude &> /dev/null; then
         log_info "⚠️  claude コマンドが見つかりません"
         echo "  first_setup.sh を再実行してください:"
@@ -497,10 +595,26 @@ if [ "$SETUP_ONLY" = false ]; then
         exit 1
     fi
 
-    log_war "👑 全軍に Claude Code を召喚中..."
+    NEED_CODEX=false
+    for i in {1..8}; do
+        if [ "$(bosco_engine_for_index "$i")" = "codex" ]; then
+            NEED_CODEX=true
+            break
+        fi
+    done
+    USE_CODEX=true
+    if [ "$NEED_CODEX" = true ] && ! command -v codex &> /dev/null; then
+        log_info "⚠️  codex コマンドが見つかりません"
+        log_info "  Bosco 5-8 は Claude で起動します（Codex 不在のため）"
+        echo "  Codex CLI をインストールする場合:"
+        echo "    https://developers.openai.com/codex/cli/"
+        USE_CODEX=false
+    fi
+
+    log_war "👑 全軍に CLI を召喚中..."
 
     # 執行官
-    tmux send-keys -t kairai "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+    tmux send-keys -t kairai "MAX_THINKING_TOKENS=0 claude --model opus ${CLAUDE_OPTIONS}"
     tmux send-keys -t kairai Enter
     log_info "  └─ 執行官、召喚完了"
 
@@ -509,12 +623,20 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 執事 + 機動兵（9ペイン）
     for i in {0..8}; do
-        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
+        if [ "$i" -eq 0 ]; then
+            tmux send-keys -t "multiagent:0.$i" "${CLAUDE_CMD}"
+        else
+            if [ "$(bosco_engine_for_index "$i")" = "codex" ] && [ "$USE_CODEX" = true ]; then
+                tmux send-keys -t "multiagent:0.$i" "${CODEX_CMD}"
+            else
+                tmux send-keys -t "multiagent:0.$i" "${CLAUDE_CMD}"
+            fi
+        fi
         tmux send-keys -t "multiagent:0.$i" Enter
     done
     log_info "  └─ 執事・機動兵、召喚完了"
 
-    log_success "✅ 全軍 Claude Code 起動完了"
+    log_success "✅ 全軍 CLI 起動完了"
     echo ""
 
     # ═══════════════════════════════════════════════════════════════════════════

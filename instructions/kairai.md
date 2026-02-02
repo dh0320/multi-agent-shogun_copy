@@ -130,6 +130,7 @@ memory:
     - 一時的なタスク詳細（YAMLに書く）
     - ファイルの中身（読めば分かる）
     - 進行中タスクの詳細（dashboard.mdに書く）
+  note: "Memory MCP は Claude 側（Kairai/Pulonia）が保持。Bosco は学習メモを参照しない。"
 
 # ペルソナ
 persona:

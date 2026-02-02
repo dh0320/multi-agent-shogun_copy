@@ -369,6 +369,8 @@ skill_candidate:
 
 ## コンテキスト読み込み手順
 
+学習メモ（Memory MCP）は使用しない。必要な情報は指示書とファイルから取得する（global_context.md などは読む）。
+
 1. ~/multi-agent-kairai/CLAUDE.md を読む
 2. **memory/global_context.md を読む**（システム全体の設定・旅人の好み）
 3. config/projects.yaml で対象確認

@@ -294,9 +294,53 @@ else
 fi
 
 # ============================================================
-# STEP 5: ディレクトリ構造作成
+# STEP 5: Codex CLI チェック（任意）
 # ============================================================
-log_step "STEP 5: ディレクトリ構造作成"
+log_step "STEP 5: Codex CLI チェック（任意）"
+
+if command -v codex &> /dev/null; then
+    CODEX_VERSION=$(codex --version 2>/dev/null || echo "unknown")
+    log_success "Codex CLI がインストール済みです"
+    log_info "バージョン: $CODEX_VERSION"
+    RESULTS+=("Codex CLI: OK")
+else
+    log_warn "Codex CLI は未インストール（任意）"
+    RESULTS+=("Codex CLI: 未インストール (任意)")
+    echo ""
+
+    if command -v npm &> /dev/null; then
+        echo "  インストールコマンド:"
+        echo "     npm install -g @openai/codex"
+        echo ""
+        if [ ! -t 0 ]; then
+            REPLY="N"
+        else
+            read -p "  今すぐインストールしますか? [y/N]: " REPLY
+        fi
+        REPLY=${REPLY:-N}
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Codex CLI をインストール中..."
+            npm install -g @openai/codex
+
+            if command -v codex &> /dev/null; then
+                log_success "Codex CLI インストール完了"
+                RESULTS+=("Codex CLI: インストール完了")
+            else
+                log_warn "インストールに失敗しました。パスを確認してください"
+                RESULTS+=("Codex CLI: インストール失敗")
+            fi
+        else
+            log_warn "インストールをスキップしました（任意）"
+        fi
+    else
+        echo "  npm がインストールされていないため、先に Node.js をインストールしてください"
+    fi
+fi
+
+# ============================================================
+# STEP 6: ディレクトリ構造作成
+# ============================================================
+log_step "STEP 6: ディレクトリ構造作成"
 
 # 必要なディレクトリ一覧
 DIRECTORIES=(
@@ -334,9 +378,9 @@ fi
 RESULTS+=("ディレクトリ構造: OK (作成:$CREATED_COUNT, 既存:$EXISTED_COUNT)")
 
 # ============================================================
-# STEP 6: 設定ファイル初期化
+# STEP 7: 設定ファイル初期化
 # ============================================================
-log_step "STEP 6: 設定ファイル確認"
+log_step "STEP 7: 設定ファイル確認"
 
 # config/settings.yaml
 if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
@@ -354,6 +398,20 @@ language: ja
 # bash: bash用プロンプト（デフォルト）
 # zsh: zsh用プロンプト
 shell: bash
+
+# CLI エンジン設定
+# kairai/pulonia は常に claude を使用
+cli_engine: claude  # claude | codex
+
+# Bosco のエンジン割り当て（固定）
+bosco:
+  claude_range: "1-4"
+  codex_range: "5-8"
+
+# CLI オプション
+cli_options:
+  claude: "--dangerously-skip-permissions"
+  codex: "--ask-for-approval never --sandbox workspace-write"
 
 # スキル設定
 skill:
@@ -415,9 +473,9 @@ fi
 RESULTS+=("設定ファイル: OK")
 
 # ============================================================
-# STEP 7: 機動兵用タスク・レポートファイル初期化
+# STEP 8: 機動兵用タスク・レポートファイル初期化
 # ============================================================
-log_step "STEP 7: キューファイル初期化"
+log_step "STEP 8: キューファイル初期化"
 
 # 機動兵用タスクファイル作成
 for i in {1..8}; do
@@ -455,9 +513,9 @@ log_info "機動兵レポートファイル (1-8) を確認/作成しました"
 RESULTS+=("キューファイル: OK")
 
 # ============================================================
-# STEP 8: スクリプト実行権限付与
+# STEP 9: スクリプト実行権限付与
 # ============================================================
-log_step "STEP 8: 実行権限設定"
+log_step "STEP 9: 実行権限設定"
 
 SCRIPTS=(
     "setup.sh"
@@ -475,9 +533,9 @@ done
 RESULTS+=("実行権限: OK")
 
 # ============================================================
-# STEP 9: zshrc alias設定
+# STEP 10: zshrc alias設定
 # ============================================================
-log_step "STEP 9: alias設定"
+log_step "STEP 10: alias設定"
 
 # alias追加対象ファイル
 ZSHRC_FILE="$HOME/.zshrc"
@@ -542,9 +600,9 @@ fi
 RESULTS+=("alias設定: OK")
 
 # ============================================================
-# STEP 10: Memory MCP セットアップ
+# STEP 11: Memory MCP セットアップ
 # ============================================================
-log_step "STEP 10: Memory MCP セットアップ"
+log_step "STEP 11: Memory MCP セットアップ"
 
 if command -v claude &> /dev/null; then
     # Memory MCP が既に設定済みか確認
