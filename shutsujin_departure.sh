@@ -37,6 +37,7 @@ log_war() {
 # ═══════════════════════════════════════════════════════════════════════════════
 SETUP_ONLY=false
 OPEN_TERMINAL=false
+AGENT_TYPE=""  # claude または codex
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -48,6 +49,14 @@ while [[ $# -gt 0 ]]; do
             OPEN_TERMINAL=true
             shift
             ;;
+        -c|--claude)
+            AGENT_TYPE="claude"
+            shift
+            ;;
+        -x|--codex)
+            AGENT_TYPE="codex"
+            shift
+            ;;
         -h|--help)
             echo ""
             echo "🏯 multi-agent-shogun 出陣スクリプト"
@@ -55,14 +64,18 @@ while [[ $# -gt 0 ]]; do
             echo "使用方法: ./shutsujin_departure.sh [オプション]"
             echo ""
             echo "オプション:"
-            echo "  -s, --setup-only  tmuxセッションのセットアップのみ（Claude起動なし）"
+            echo "  -c, --claude      Claude Code を使用"
+            echo "  -x, --codex       Codex CLI を使用"
+            echo "  -s, --setup-only  tmuxセッションのセットアップのみ（エージェント起動なし）"
             echo "  -t, --terminal    Windows Terminal で新しいタブを開く"
             echo "  -h, --help        このヘルプを表示"
             echo ""
             echo "例:"
-            echo "  ./shutsujin_departure.sh      # 全エージェント起動（通常の出陣）"
-            echo "  ./shutsujin_departure.sh -s   # セットアップのみ（手動でClaude起動）"
-            echo "  ./shutsujin_departure.sh -t   # 全エージェント起動 + ターミナルタブ展開"
+            echo "  ./shutsujin_departure.sh         # 対話式メニューでエージェント選択"
+            echo "  ./shutsujin_departure.sh -c      # Claude Code で全エージェント起動"
+            echo "  ./shutsujin_departure.sh -x      # Codex CLI で全エージェント起動"
+            echo "  ./shutsujin_departure.sh -s      # セットアップのみ（手動でエージェント起動）"
+            echo "  ./shutsujin_departure.sh -c -t   # Claude + ターミナルタブ展開"
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
@@ -78,6 +91,51 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# エージェント選択（オプション未指定時は対話式メニュー）
+# ═══════════════════════════════════════════════════════════════════════════════
+if [ -z "$AGENT_TYPE" ] && [ "$SETUP_ONLY" = false ]; then
+    echo ""
+    echo "  ╔══════════════════════════════════════════════════════════╗"
+    echo "  ║  🏯 エージェント選択                                      ║"
+    echo "  ╚══════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "  使用するAIエージェントを選択してください:"
+    echo ""
+    echo "    [1] Claude Code  (Anthropic)"
+    echo "    [2] Codex CLI    (OpenAI)"
+    echo ""
+    read -p "  選択 [1/2]: " AGENT_CHOICE
+    case $AGENT_CHOICE in
+        1)
+            AGENT_TYPE="claude"
+            ;;
+        2)
+            AGENT_TYPE="codex"
+            ;;
+        *)
+            echo "  無効な選択です。Claude Code をデフォルトで使用します。"
+            AGENT_TYPE="claude"
+            ;;
+    esac
+    echo ""
+    log_success "  └─ ${AGENT_TYPE} を選択しました"
+    echo ""
+fi
+
+# エージェント別コマンド設定
+if [ "$AGENT_TYPE" = "codex" ]; then
+    SHOGUN_CMD="codex --approval-mode full-auto --sandbox workspace-write"
+    AGENT_CMD="codex --approval-mode full-auto --sandbox workspace-write"
+    AGENT_DISPLAY_NAME="Codex CLI"
+    STARTUP_CHECK_PATTERN="codex"
+else
+    SHOGUN_CMD="MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+    AGENT_CMD="claude --dangerously-skip-permissions"
+    AGENT_DISPLAY_NAME="Claude Code"
+    STARTUP_CHECK_PATTERN="bypass permissions"
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 出陣バナー表示（CC0ライセンスASCIIアート使用）
@@ -336,13 +394,13 @@ log_success "  └─ 将軍の本陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: Claude Code 起動（--setup-only でスキップ）
+# STEP 6: エージェント起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    log_war "👑 全軍に Claude Code を召喚中..."
+    log_war "👑 全軍に ${AGENT_DISPLAY_NAME} を召喚中..."
 
     # 将軍
-    tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+    tmux send-keys -t shogun "$SHOGUN_CMD"
     tmux send-keys -t shogun Enter
     log_info "  └─ 将軍、召喚完了"
 
@@ -351,12 +409,12 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 家老 + 足軽（9ペイン）
     for i in {0..8}; do
-        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
+        tmux send-keys -t "multiagent:0.$i" "$AGENT_CMD"
         tmux send-keys -t "multiagent:0.$i" Enter
     done
     log_info "  └─ 家老・足軽、召喚完了"
 
-    log_success "✅ 全軍 Claude Code 起動完了"
+    log_success "✅ 全軍 ${AGENT_DISPLAY_NAME} 起動完了"
     echo ""
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -430,12 +488,12 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  Claude Code の起動を待機中（最大30秒）..."
+    echo "  ${AGENT_DISPLAY_NAME} の起動を待機中（最大30秒）..."
 
     # 将軍の起動を確認（最大30秒待機）
     for i in {1..30}; do
-        if tmux capture-pane -t shogun -p | grep -q "bypass permissions"; then
-            echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
+        if tmux capture-pane -t shogun -p | grep -q "$STARTUP_CHECK_PATTERN"; then
+            echo "  └─ 将軍の ${AGENT_DISPLAY_NAME} 起動確認完了（${i}秒）"
             break
         fi
         sleep 1
@@ -507,19 +565,29 @@ echo "  ╚═══════════════════════
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
-    echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
+    echo "  ⚠️  セットアップのみモード: エージェントは未起動です"
     echo ""
-    echo "  手動でClaude Codeを起動するには:"
-    echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  # 将軍を召喚                                            │"
-    echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter │"
-    echo "  │                                                          │"
-    echo "  │  # 家老・足軽を一斉召喚                                   │"
-    echo "  │  for i in {0..8}; do \\                                   │"
-    echo "  │    tmux send-keys -t multiagent:0.\$i \\                   │"
-    echo "  │      'claude --dangerously-skip-permissions' Enter       │"
-    echo "  │  done                                                    │"
-    echo "  └──────────────────────────────────────────────────────────┘"
+    echo "  手動でエージェントを起動するには（Claudeの場合）:"
+    echo "  ┌──────────────────────────────────────────────────────────────────────────────┐"
+    echo "  │  # 将軍を召喚                                                                │"
+    echo "  │  tmux send-keys -t shogun 'claude --dangerously-skip-permissions' Enter     │"
+    echo "  │                                                                              │"
+    echo "  │  # 家老・足軽を一斉召喚                                                       │"
+    echo "  │  for i in {0..8}; do                                                         │"
+    echo "  │    tmux send-keys -t multiagent:0.\$i 'claude --dangerously-skip-permissions' Enter  │"
+    echo "  │  done                                                                        │"
+    echo "  └──────────────────────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "  Codexの場合:"
+    echo "  ┌──────────────────────────────────────────────────────────────────────────────┐"
+    echo "  │  # 将軍を召喚                                                                │"
+    echo "  │  tmux send-keys -t shogun 'codex --approval-mode full-auto --sandbox workspace-write' Enter │"
+    echo "  │                                                                              │"
+    echo "  │  # 家老・足軽を一斉召喚                                                       │"
+    echo "  │  for i in {0..8}; do                                                         │"
+    echo "  │    tmux send-keys -t multiagent:0.\$i 'codex --approval-mode full-auto --sandbox workspace-write' Enter │"
+    echo "  │  done                                                                        │"
+    echo "  └──────────────────────────────────────────────────────────────────────────────┘"
     echo ""
 fi
 

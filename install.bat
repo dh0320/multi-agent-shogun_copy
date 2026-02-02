@@ -5,31 +5,31 @@ title multi-agent-shogun Installer
 echo.
 echo   +============================================================+
 echo   |  [SHOGUN] multi-agent-shogun - Auto Installer              |
-echo   |           ‘S©“®ƒZƒbƒgƒAƒbƒv                               |
+echo   |           å…¨è‡ªå‹•ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—                               |
 echo   +============================================================+
 echo.
 
 REM ===== Step 1: Check/Install WSL2 =====
 echo   [1/4] Checking WSL2...
-echo         WSL2 Šm”F’†...
+echo         WSL2 ç¢ºèªä¸­...
 
 wsl.exe --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   WSL2 not found. Installing automatically...
-    echo   WSL2 ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB©“®ƒCƒ“ƒXƒg[ƒ‹’†...
+    echo   WSL2 ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚è‡ªå‹•ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­...
     echo.
 
-    REM ŠÇ—ÒŒ ŒÀ‚ÅÀs‚³‚ê‚Ä‚¢‚é‚©Šm”F
+    REM ç®¡ç†è€…æ¨©é™ã§å®Ÿè¡Œã•ã‚Œã¦ã„ã‚‹ã‹ç¢ºèª
     net session >nul 2>&1
     if %ERRORLEVEL% NEQ 0 (
         echo   +============================================================+
         echo   |  [WARN] Administrator privileges required!                 |
-        echo   |         ŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·                               |
+        echo   |         ç®¡ç†è€…æ¨©é™ãŒå¿…è¦ã§ã™                               |
         echo   +============================================================+
         echo.
         echo   Right-click install.bat and select "Run as administrator"
-        echo   install.bat ‚ğ‰EƒNƒŠƒbƒN¨uŠÇ—Ò‚Æ‚µ‚ÄÀsv
+        echo   install.bat ã‚’å³ã‚¯ãƒªãƒƒã‚¯â†’ã€Œç®¡ç†è€…ã¨ã—ã¦å®Ÿè¡Œã€
         echo.
         pause
         exit /b 1
@@ -41,11 +41,11 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   +============================================================+
     echo   |  [...] Restart required!                                   |
-    echo   |        Ä‹N“®‚ª•K—v‚Å‚·                                    |
+    echo   |        å†èµ·å‹•ãŒå¿…è¦ã§ã™                                    |
     echo   +============================================================+
     echo.
     echo   After restart, run install.bat again.
-    echo   Ä‹N“®ŒãA‚à‚¤ˆê“x install.bat ‚ğÀs‚µ‚Ä‚­‚¾‚³‚¢B
+    echo   å†èµ·å‹•å¾Œã€ã‚‚ã†ä¸€åº¦ install.bat ã‚’å®Ÿè¡Œã—ã¦ãã ã•ã„ã€‚
     echo.
     pause
     exit /b 0
@@ -55,13 +55,13 @@ echo.
 
 REM ===== Step 2: Check/Install Ubuntu =====
 echo   [2/4] Checking Ubuntu...
-echo         Ubuntu Šm”F’†...
+echo         Ubuntu ç¢ºèªä¸­...
 
 wsl.exe -l -q 2>nul | findstr /i "ubuntu" >nul
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   Ubuntu not found. Installing automatically...
-    echo   Ubuntu ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB©“®ƒCƒ“ƒXƒg[ƒ‹’†...
+    echo   Ubuntu ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚è‡ªå‹•ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­...
     echo.
 
     wsl --install -d Ubuntu --no-launch
@@ -69,17 +69,17 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   +============================================================+
     echo   |  [NOTE] Ubuntu initial setup required!                     |
-    echo   |         Ubuntu ‚Ì‰Šúİ’è‚ª•K—v‚Å‚·                        |
+    echo   |         Ubuntu ã®åˆæœŸè¨­å®šãŒå¿…è¦ã§ã™                        |
     echo   +============================================================+
     echo.
     echo   1. Open Ubuntu from Start Menu
-    echo      ƒXƒ^[ƒgƒƒjƒ…[‚©‚ç Ubuntu ‚ğŠJ‚­
+    echo      ã‚¹ã‚¿ãƒ¼ãƒˆãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‹ã‚‰ Ubuntu ã‚’é–‹ã
     echo.
     echo   2. Set your username and password
-    echo      ƒ†[ƒU[–¼‚ÆƒpƒXƒ[ƒh‚ğİ’è
+    echo      ãƒ¦ãƒ¼ã‚¶ãƒ¼åã¨ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‚’è¨­å®š
     echo.
     echo   3. Run install.bat again
-    echo      ‚à‚¤ˆê“x install.bat ‚ğÀs
+    echo      ã‚‚ã†ä¸€åº¦ install.bat ã‚’å®Ÿè¡Œ
     echo.
     pause
     exit /b 0
@@ -89,15 +89,15 @@ echo.
 
 REM ===== Step 3: Get script path for WSL =====
 echo   [3/4] Preparing WSL path...
-echo         WSL ƒpƒX€”õ’†...
+echo         WSL ãƒ‘ã‚¹æº–å‚™ä¸­...
 
-REM Œ»İ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ğWSLƒpƒX‚É•ÏŠ·
+REM ç¾åœ¨ã®ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’WSLãƒ‘ã‚¹ã«å¤‰æ›
 set "WIN_PATH=%~dp0"
 set "WIN_PATH=%WIN_PATH:\=/%"
 set "WIN_PATH=%WIN_PATH:C:=/mnt/c%"
 set "WIN_PATH=%WIN_PATH:D:=/mnt/d%"
 set "WIN_PATH=%WIN_PATH:E:=/mnt/e%"
-REM ––”ö‚ÌƒXƒ‰ƒbƒVƒ…‚ğíœ
+REM æœ«å°¾ã®ã‚¹ãƒ©ãƒƒã‚·ãƒ¥ã‚’å‰Šé™¤
 if "%WIN_PATH:~-1%"=="/" set "WIN_PATH=%WIN_PATH:~0,-1%"
 
 echo   [OK] Path: %WIN_PATH%
@@ -105,7 +105,7 @@ echo.
 
 REM ===== Step 4: Run first_setup.sh =====
 echo   [4/4] Running first_setup.sh...
-echo         first_setup.sh Às’†...
+echo         first_setup.sh å®Ÿè¡Œä¸­...
 echo.
 
 REM Set Ubuntu as default WSL distribution
@@ -126,19 +126,23 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo   +============================================================+
 echo   |  [OK] Installation completed!                              |
-echo   |       ƒCƒ“ƒXƒg[ƒ‹Š®—¹I                                   |
+echo   |       ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«å®Œäº†ï¼                                   |
 echo   +============================================================+
 echo.
 echo   +------------------------------------------------------------+
 echo   |  [START] NEXT: Start the system                            |
-echo   |          Ÿ‚ÌƒXƒeƒbƒv: ƒVƒXƒeƒ€‹N“®                        |
+echo   |          æ¬¡ã®ã‚¹ãƒ†ãƒƒãƒ—: ã‚·ã‚¹ãƒ†ãƒ èµ·å‹•                        |
 echo   +------------------------------------------------------------+
 echo   |                                                            |
 echo   |  Open WSL terminal and run:                                |
-echo   |  WSL ƒ^[ƒ~ƒiƒ‹‚ğŠJ‚¢‚ÄÀs:                               |
+echo   |  WSL ã‚¿ãƒ¼ãƒŸãƒŠãƒ«ã‚’é–‹ã„ã¦å®Ÿè¡Œ:                               |
 echo   |                                                            |
 echo   |    cd %WIN_PATH%
 echo   |    ./shutsujin_departure.sh                                |
+echo   |                                                            |
+echo   |  Options / ã‚ªãƒ—ã‚·ãƒ§ãƒ³:                                     |
+echo   |    ./shutsujin_departure.sh -c   (Claude Code)             |
+echo   |    ./shutsujin_departure.sh -x   (Codex CLI)               |
 echo   |                                                            |
 echo   +------------------------------------------------------------+
 echo.
