@@ -1,4 +1,17 @@
 {
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'git\\s+push'; then echo 'BLOCK: git push は禁止されています。殿の許可なくリモートにプッシュすることは許されませぬ。'; exit 1; fi"
+          }
+        ]
+      }
+    ]
+  },
   "spinnerVerbs": {
     "mode": "replace",
     "verbs": [
