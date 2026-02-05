@@ -4,7 +4,7 @@
 # マルチエージェント並列開発基盤の操作コマンド集
 # =============================================================================
 
-.PHONY: help setup start start-setup stop status
+.PHONY: help setup start start-setup stop status attach-shogun attach-agents
 
 # デフォルトターゲット: ヘルプを表示
 .DEFAULT_GOAL := help
@@ -47,6 +47,20 @@ status:
 	@tmux list-sessions 2>/dev/null || echo "起動中のセッションはござらぬ"
 
 # -----------------------------------------------------------------------------
+# attach-shogun: 将軍セッションにアタッチ
+# -----------------------------------------------------------------------------
+# shogun セッション（将軍ペイン）に接続する
+attach-shogun:
+	@tmux attach -t shogun
+
+# -----------------------------------------------------------------------------
+# attach-multiagent: 家老・足軽セッションにアタッチ
+# -----------------------------------------------------------------------------
+# multiagent セッション（家老・足軽ペイン）に接続する
+attach-agents:
+	@tmux attach -t multiagent
+
+# -----------------------------------------------------------------------------
 # help: ヘルプ表示
 # -----------------------------------------------------------------------------
 # 各ターゲットの説明を表示
@@ -55,10 +69,12 @@ help:
 	@echo " multi-agent-shogun コマンド一覧"
 	@echo "=============================================="
 	@echo ""
-	@echo "  make setup       : 初回セットアップを実行"
-	@echo "  make start       : 出陣（全エージェント起動）"
-	@echo "  make start-setup : セットアップのみ（Claude起動なし）"
-	@echo "  make stop        : 全セッション終了"
-	@echo "  make status      : セッション状態確認"
-	@echo "  make help        : このヘルプを表示"
+	@echo "  make setup             : 初回セットアップを実行"
+	@echo "  make shutsujin         : 出陣（全エージェント起動）"
+	@echo "  make start-setup       : セットアップのみ（Claude起動なし）"
+	@echo "  make stop              : 全セッション終了"
+	@echo "  make status            : セッション状態確認"
+	@echo "  make attach-shogun     : 将軍セッションにアタッチ"
+	@echo "  make attach-agents     : 家老・足軽セッションにアタッチ"
+	@echo "  make help              : このヘルプを表示"
 	@echo ""
