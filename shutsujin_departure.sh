@@ -578,19 +578,19 @@ if [ "$SETUP_ONLY" = false ]; then
         local role=$1  # shogun, karo, ashigaru_strong, ashigaru_fast
         
         if [ "$BACKEND" = "gemini" ]; then
-            # Gemini CLI
+            # Gemini CLI (--yolo で全操作を自動承認)
             case $role in
                 shogun)
-                    echo "gemini --model gemini-2.5-pro"
+                    echo "gemini --model gemini-3-flash-preview --yolo"
                     ;;
                 karo)
-                    echo "gemini --model gemini-2.5-pro"
+                    echo "gemini --model gemini-3-flash-preview --yolo"
                     ;;
                 ashigaru_strong)
-                    echo "gemini --model gemini-2.5-pro"
+                    echo "gemini --model gemini-3-flash-preview --yolo"
                     ;;
                 ashigaru_fast)
-                    echo "gemini --model gemini-2.5-flash"
+                    echo "gemini --model gemini-3-flash-preview --yolo"
                     ;;
             esac
         else
@@ -828,7 +828,7 @@ if [ "$SETUP_ONLY" = true ]; then
         BACKEND_MSG=$(grep "^backend:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "claude")
     fi
     if [ "$BACKEND_MSG" = "gemini" ]; then
-        CLI_CMD="gemini --model gemini-2.5-pro"
+        CLI_CMD="gemini --model gemini-3-flash-preview --yolo"
         CLI_DISPLAY="Gemini CLI"
     else
         CLI_DISPLAY="Claude Code"
