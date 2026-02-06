@@ -1,18 +1,4 @@
 {
-  "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
-    },
-    "atlassian-confluence": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.atlassian.com/v1/mcp"
-      ]
-    }
-  },
   "hooks": {
     "PreToolUse": [
       {
