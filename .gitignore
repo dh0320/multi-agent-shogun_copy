@@ -26,6 +26,7 @@
 !instructions/shogun.md
 !instructions/karo.md
 !instructions/ashigaru.md
+!instructions/ohariko.md
 
 # Startup script
 !shutsujin_departure.sh
@@ -42,12 +43,17 @@
 !scripts/
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
+!scripts/botsunichiroku.py
+!scripts/init_db.py
+!scripts/ntfy_watcher.py
 
 # VoiceFlow (sample template only, not actual data)
 !voiceflow/
 !voiceflow/streaks.yaml.sample
 
-# Skills (skill-creator only)
+# Skills
 !skills/
 !skills/skill-creator/
 !skills/skill-creator/SKILL.md
+!.claude/skills/
+!.claude/skills/*.md

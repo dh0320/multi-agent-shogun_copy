@@ -61,14 +61,14 @@ Most multi-agent frameworks burn API tokens on coordination. Shogun doesn't.
 |---|---|---|---|---|
 | **Architecture** | Subagents inside one process | Graph-based state machine | Role-based agents | Feudal hierarchy via tmux |
 | **Parallelism** | Sequential (one at a time) | Parallel nodes (v0.2+) | Limited | **8 independent agents** |
-| **Coordination cost** | API calls per Task | API + infra (Postgres/Redis) | API + CrewAI platform | **Zero** (YAML + tmux) |
+| **Coordination cost** | API calls per Task | API + infra (Postgres/Redis) | API + CrewAI platform | **Zero** (SQLite + tmux) |
 | **Observability** | Claude logs only | LangSmith integration | OpenTelemetry | **Live tmux panes** + dashboard |
 | **Skill discovery** | None | None | None | **Bottom-up auto-proposal** |
 | **Setup** | Built into Claude Code | Heavy (infra required) | pip install | Shell scripts |
 
 ### What makes this different
 
-**Zero coordination overhead** — Agents talk through YAML files on disk. The only API calls are for actual work, not orchestration. Run 8 agents and pay only for 8 agents' work.
+**Zero coordination overhead** — Agents talk through a lightweight SQLite database (botsunichiroku.db). No heavy infrastructure — just a single DB file. The only API calls are for actual work, not orchestration. Run 8 agents and pay only for 8 agents' work.
 
 **Full transparency** — Every agent runs in a visible tmux pane. Every instruction, report, and decision is a plain YAML file you can read, diff, and version-control. No black boxes.
 
@@ -300,6 +300,9 @@ Then restart your computer and run `install.bat` again.
 | `install.bat` | Windows: WSL2 + Ubuntu setup | First time only |
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
 | `shutsujin_departure.sh` | Create tmux sessions + launch Claude Code + load instructions + start ntfy listener | Daily |
+| `botsunichiroku.py` | Database CLI (list/add/update commands, subtasks, reports) | As needed (CLI: `python3 scripts/botsunichiroku.py`) |
+| `init_db.py` | Initialize SQLite database | First time / reset |
+| `generate_dashboard.py` | Regenerate dashboard.md from database | As needed (auto-run by Karo) |
 
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed (guides you if not)
@@ -494,7 +497,7 @@ Efficient knowledge sharing through a four-layer context system:
 |-------|----------|---------|
 | Layer 1: Memory MCP | `memory/shogun_memory.jsonl` | Cross-project, cross-session long-term memory |
 | Layer 2: Project | `config/projects.yaml`, `projects/<id>.yaml`, `context/{project}.md` | Project-specific information and technical knowledge |
-| Layer 3: YAML Queue | `queue/shogun_to_karo.yaml`, `queue/tasks/`, `queue/reports/` | Task management — source of truth for instructions and reports |
+| Layer 3: SQLite DB | `data/botsunichiroku.db` | Task management — source of truth for commands, subtasks, and reports (DB tables: commands, subtasks, reports, agents, counters) |
 | Layer 4: Session | CLAUDE.md, instructions/*.md | Working context (wiped by `/clear`) |
 
 This design enables:
@@ -683,13 +686,13 @@ These principles are documented in detail: **[docs/philosophy.md](docs/philosoph
 5. **Fault isolation**: One Ashigaru failing doesn't affect the others
 6. **Unified reporting**: Only the Shogun communicates with you, keeping information organized
 
-### Why YAML + send-keys?
+### Why SQLite + send-keys?
 
-1. **State persistence**: YAML files provide structured communication that survives agent restarts
+1. **State persistence**: A SQLite database provides structured, queryable communication that survives agent restarts
 2. **No polling needed**: Event-driven design reduces API costs
 3. **No interruptions**: Prevents agents from interrupting each other or your input
-4. **Easy debugging**: Humans can read YAML files directly to understand system state
-5. **No conflicts**: Each Ashigaru has dedicated files
+4. **Easy debugging**: Humans can query the DB with a simple CLI (botsunichiroku.py) to understand system state
+5. **No conflicts**: Transactional DB writes eliminate race conditions
 6. **2-second send intervals**: Adding `sleep 2` between consecutive send-keys prevents input buffer overflow (improved delivery rate from 14% to 87.5%)
 
 ### Agent Identification (@agent_id)
@@ -993,9 +996,15 @@ multi-agent-shogun/
 │   ├── karo.md               # Karo instructions
 │   └── ashigaru.md           # Ashigaru instructions
 │
+├── data/
+│   └── botsunichiroku.db     # SQLite database (commands, subtasks, reports)
+│
 ├── scripts/                  # Utility scripts
-│   ├── ntfy.sh               # Send push notifications to phone
-│   └── ntfy_listener.sh      # Stream incoming messages from phone
+│   ├── botsunichiroku.py     # CLI for database operations
+│   ├── init_db.py            # Database initialization
+│   ├── generate_dashboard.py # Auto-generate dashboard.md from DB
+│   ├── ntfy_watcher.py       # Python ntfy listener (replaces ntfy_listener.sh)
+│   └── ntfy.sh               # Send push notifications to phone
 │
 ├── config/
 │   ├── settings.yaml         # Language, ntfy, and other settings
@@ -1174,6 +1183,8 @@ Even if you're not comfortable with keyboard shortcuts, you can switch, scroll, 
 <details>
 <summary><b>What's New in v2.0.0</b></summary>
 
+- **SQLite migration (botsunichiroku.db)** — Commands, subtasks, and reports stored in a queryable database with CLI (`botsunichiroku.py`). Replaces flat YAML files for task management.
+- **Auto-generated dashboard** — `generate_dashboard.py` builds dashboard.md from DB state, eliminating manual updates.
 - **ntfy bidirectional communication** — Send commands from your phone, receive push notifications for task completion
 - **VoiceFlow notifications** — Streak tracking, Eat the Frog 🐸, behavioral psychology-driven motivation
 - **Pane border task display** — See each agent's current task at a glance on the tmux pane border

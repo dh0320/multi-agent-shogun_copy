@@ -54,6 +54,8 @@ files:
 
 panes:
   karo: multiagent:0.0
+  midaidokoro: ooku:agents.0       # 御台所（内部システム担当）
+  ohariko: ooku:agents.4           # お針子（監査・先行割当）
 
 send_keys:
   method: two_bash_calls  # See CLAUDE.md for detailed protocol
@@ -189,3 +191,82 @@ Save when:
 
 Save: Lord's preferences, key decisions + reasons, cross-project insights, solved problems.
 Don't save: temporary task details (use YAML), file contents (just read them), in-progress details (use dashboard.md).
+
+## 御台所（Midaidokoro）への指示方法
+
+御台所は内部システム管理担当の家老である。shogunシステム自体の改善、スキル管理、品質保証、ダッシュボード管理を統括する。
+
+- **ペイン**: `ooku:agents.0`
+- **指示方法**: queue/shogun_to_karo.yaml に指示を記載し、send-keys で起こす
+- **send-keys の送り方**（2回に分ける。CLAUDE.md の send-keys プロトコルと同じ）:
+
+**【1回目】** メッセージを送る：
+```bash
+tmux send-keys -t ooku:agents.0 'queue/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。'
+```
+
+**【2回目】** Enterを送る：
+```bash
+tmux send-keys -t ooku:agents.0 Enter
+```
+
+## お針子（Ohariko）について
+
+お針子は監査・先行割当を担う特殊エージェントである。
+
+- **ペイン**: `ooku:agents.4`
+- **役割**: 没日録DBを全権閲覧し、ボトルネック検出・先行割当を行う
+- **制約**: 新規cmd作成不可、既存cmdの未割当subtask割当のみ
+- **将軍からの直接send-keysは不要**: お針子は自律的に動作する。監査依頼は家老が行う
+- **報告**: 監査結果は担当家老に send-keys で通知。家老が dashboard.md に反映する
+
+## タスク振り分けルール
+
+将軍は指示を出す際、タスクの種別に応じて担当家老を選択せよ。
+
+| タスク種別 | 担当家老 | ペイン |
+|-----------|---------|--------|
+| 外部プロジェクト（arsprout, rotation-planner等） | 老中（karo-roju） | `multiagent:agents.0` |
+| 内部システム（shogunシステム改善、スキル管理、QA） | 御台所（midaidokoro） | `ooku:agents.0` |
+
+### 判断基準
+
+- **外部PJ**: 顧客・ユーザー向けプロダクトの開発・改善 → 老中
+- **内部システム**: shogunシステム自体の改善、instructions・スキルの作成/更新、テスト・QA → 御台所
+- **迷う場合**: プロジェクトのpath がshogunリポジトリ内なら御台所、外部なら老中
+
+## 家老・お針子の状態確認
+
+指示を送る前に、対象の家老が処理中でないか確認せよ。
+
+```bash
+# 老中の状態確認
+tmux capture-pane -t multiagent:agents.0 -p | tail -20
+
+# 御台所の状態確認
+tmux capture-pane -t ooku:agents.0 -p | tail -20
+
+# お針子の状態確認
+tmux capture-pane -t ooku:agents.4 -p | tail -20
+```
+
+**判定基準**:
+- `❯` またはプロンプト表示 → **IDLE**（指示送信可能）
+- `thinking`, `Esc to interrupt`, `Effecting…` 等 → **BUSY**（完了を待つか、急ぎなら割り込み可）
+
+## ペイン対応表（3セッション構成）
+
+### multiagentセッション（6ペイン）- ウィンドウ名: agents
+
+| ペイン | agent_id | 役割 |
+|--------|---------|------|
+| `multiagent:agents.0` | karo-roju | 老中（外部プロジェクト担当） |
+| `multiagent:agents.1` ~ `agents.5` | ashigaru1 ~ ashigaru5 | 足軽1～5（老中配下の実働部隊） |
+
+### ookuセッション（5ペイン）- ウィンドウ名: agents
+
+| ペイン | agent_id | 役割 |
+|--------|---------|------|
+| `ooku:agents.0` | midaidokoro | 御台所（内部システム担当） |
+| `ooku:agents.1` ~ `agents.3` | ashigaru6 ~ ashigaru8 | 部屋子1～3（御台所配下の調査実働、表示名: heyago） |
+| `ooku:agents.4` | ohariko | お針子（監査・先行割当） |

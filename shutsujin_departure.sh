@@ -119,8 +119,14 @@ while [[ $# -gt 0 ]]; do
             echo "オプション:"
             echo "  -c, --clean         キューとダッシュボードをリセットして起動（クリーンスタート）"
             echo "                      未指定時は前回の状態を維持して起動"
-            echo "  -k, --kessen        決戦の陣（全足軽をOpusで起動）"
-            echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5-8=Opus）"
+            echo "  -k, --kessen        決戦の陣（全員Opus Thinkingで起動）"
+            echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5+部屋子=Opus, お針子=Sonnet）"
+            echo ""
+            echo "  3セッション構成:"
+            echo "    shogun:      将軍（統括）"
+            echo "    multiagent:  老中 + 足軽1-8（karo + ashigaru1-8）"
+            echo "    ooku:        御台所 + 部屋子1-3 + お針子（midaidokoro + heyago + ohariko）"
+            echo ""
             echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
@@ -143,15 +149,19 @@ while [[ $# -gt 0 ]]; do
             echo "  家老:      Opus"
             echo "  足軽1-4:   Sonnet"
             echo "  足軽5-8:   Opus"
+            echo "  御台所:    Opus Thinking"
+            echo "  部屋子1-3: Opus Thinking"
+            echo "  お針子:    Sonnet Thinking"
             echo ""
             echo "陣形:"
-            echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet, 足軽5-8=Opus"
-            echo "  決戦の陣（--kessen）:   全足軽=Opus"
+            echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet, 足軽5+部屋子=Opus, お針子=Sonnet"
+            echo "  決戦の陣（--kessen）:   全員=Opus Thinking"
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
             echo "  css   → tmux attach-session -t shogun"
             echo "  csm   → tmux attach-session -t multiagent"
+            echo "  cso   → tmux attach-session -t ooku"
             echo ""
             exit 0
             ;;
@@ -202,18 +212,18 @@ show_battle_cry() {
     # 足軽隊列（オリジナル）
     # ═══════════════════════════════════════════════════════════════════════════
     echo -e "\033[1;34m  ╔═════════════════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[1;34m  ║\033[0m                    \033[1;37m【 足 軽 隊 列 ・ 八 名 配 備 】\033[0m                      \033[1;34m║\033[0m"
+    echo -e "\033[1;34m  ║\033[0m            \033[1;37m【 足軽・部屋子・お針子 隊列 ・ 九 名 配 備 】\033[0m              \033[1;34m║\033[0m"
     echo -e "\033[1;34m  ╚═════════════════════════════════════════════════════════════════════════════╝\033[0m"
 
     cat << 'ASHIGARU_EOF'
 
-       /\      /\      /\      /\      /\      /\      /\      /\
-      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
-     /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\
-       ||      ||      ||      ||      ||      ||      ||      ||
-      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
-      /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
-     [足1]   [足2]   [足3]   [足4]   [足5]   [足6]   [足7]   [足8]
+       /\      /\      /\      /\      /\      /\      /\      /\      /\
+      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
+     /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\
+       ||      ||      ||      ||      ||      ||      ||      ||      ||
+      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
+      /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
+     [足1]   [足2]   [足3]   [足4]   [足5]   [部1]   [部2]   [部3]   [針]
 
 ASHIGARU_EOF
 
@@ -226,7 +236,7 @@ ASHIGARU_EOF
     echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
     echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m戦国マルチエージェント統率システム\033[0m 〜           \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×8      \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m  \033[1;35m将軍\033[0m:統括 \033[1;31m老中\033[0m:外部PJ \033[1;35m御台所\033[0m:内部 \033[1;34m足軽\033[0m×5 \033[1;36m部屋子\033[0m×3 \033[1;33mお針子\033[0m×1  \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
     echo ""
 }
@@ -242,6 +252,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🧹 既存の陣を撤収中..."
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
+tmux kill-session -t ooku 2>/dev/null && log_info "  └─ ooku陣、撤収完了" || log_info "  └─ ooku陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -509,6 +520,60 @@ log_success "  └─ 家老・足軽の陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5.2: ooku セッション作成（5ペイン：御台所 + 部屋子1-3 + お針子）
+# ═══════════════════════════════════════════════════════════════════════════════
+log_war "🏯 御台所・部屋子・お針子の陣を構築中（5名配備）..."
+
+if ! tmux new-session -d -s ooku -n "agents" 2>/dev/null; then
+    echo "  [ERROR] ooku セッション作成失敗"
+    exit 1
+fi
+
+# 5ペイン作成（3列構成）
+# ペイン配置:
+#   左: pane 0=midaidokoro
+#   中列: pane 1=heyago1, 2=heyago2, 3=heyago3
+#   右: pane 4=ohariko
+
+# 3列に分割
+tmux split-window -h -t "ooku:agents"
+tmux split-window -h -t "ooku:agents"
+
+# 中列（pane 1）を3行に分割
+tmux select-pane -t "ooku:agents.$((PANE_BASE+1))"
+tmux split-window -v
+tmux split-window -v
+
+# ooku ペイン設定
+OOKU_LABELS=("midaidokoro" "heyago1" "heyago2" "heyago3" "ohariko")
+OOKU_COLORS=("magenta" "cyan" "cyan" "cyan" "yellow")
+OOKU_AGENT_IDS=("midaidokoro" "ashigaru6" "ashigaru7" "ashigaru8" "ohariko")
+
+if [ "$KESSEN_MODE" = true ]; then
+    OOKU_TITLES=("midaidokoro(Opus)" "heyago1(Opus)" "heyago2(Opus)" "heyago3(Opus)" "ohariko(Opus)")
+    OOKU_MODELS=("Opus" "Opus" "Opus" "Opus" "Opus")
+else
+    OOKU_TITLES=("midaidokoro(Opus)" "heyago1(Opus)" "heyago2(Opus)" "heyago3(Opus)" "ohariko(Sonnet)")
+    OOKU_MODELS=("Opus" "Opus" "Opus" "Opus" "Sonnet")
+fi
+
+for i in {0..4}; do
+    p=$((PANE_BASE + i))
+    tmux select-pane -t "ooku:agents.${p}" -T "${OOKU_TITLES[$i]}"
+    tmux set-option -p -t "ooku:agents.${p}" @agent_id "${OOKU_AGENT_IDS[$i]}"
+    tmux set-option -p -t "ooku:agents.${p}" @model_name "${OOKU_MODELS[$i]}"
+    tmux set-option -p -t "ooku:agents.${p}" @current_task ""
+    PROMPT_STR=$(generate_prompt "${OOKU_LABELS[$i]}" "${OOKU_COLORS[$i]}" "$SHELL_SETTING")
+    tmux send-keys -t "ooku:agents.${p}" "cd \"$(pwd)\" && export PS1='${PROMPT_STR}' && clear" Enter
+done
+
+tmux set-option -t ooku -w pane-border-status top
+tmux set-option -t ooku -w pane-border-format '#{@agent_id} (#{@model_name})'
+
+log_success "  └─ 御台所・部屋子・お針子の陣、構築完了"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: Claude Code 起動（-s / --setup-only のときはスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
@@ -565,6 +630,35 @@ if [ "$SETUP_ONLY" = false ]; then
             tmux send-keys -t "multiagent:agents.${p}" Enter
         done
         log_info "  └─ 足軽5-8（Opus / effort: high）、召喚完了"
+    fi
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ooku セッション: 御台所 + 部屋子1-3 + お針子
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 御台所（pane 0）: Opus Thinking
+    p=$((PANE_BASE + 0))
+    tmux send-keys -t "ooku:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+    tmux send-keys -t "ooku:agents.${p}" Enter
+    log_info "  └─ 御台所（Opus Thinking）、召喚完了"
+
+    # 部屋子1-3 (pane 1-3): Opus Thinking
+    for i in {1..3}; do
+        p=$((PANE_BASE + i))
+        tmux send-keys -t "ooku:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t "ooku:agents.${p}" Enter
+    done
+    log_info "  └─ 部屋子1-3（Opus Thinking）、召喚完了"
+
+    # お針子 (pane 4)
+    p=$((PANE_BASE + 4))
+    if [ "$KESSEN_MODE" = true ]; then
+        tmux send-keys -t "ooku:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t "ooku:agents.${p}" Enter
+        log_info "  └─ お針子（Opus Thinking）、召喚完了"
+    else
+        tmux send-keys -t "ooku:agents.${p}" "claude --model sonnet --dangerously-skip-permissions"
+        tmux send-keys -t "ooku:agents.${p}" Enter
+        log_info "  └─ お針子（Sonnet Thinking）、召喚完了"
     fi
 
     if [ "$KESSEN_MODE" = true ]; then
@@ -680,6 +774,38 @@ NINJA_EOF
         sleep 0.5
     done
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ooku セッション: 御台所 + 部屋子1-3 + お針子
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 御台所に指示書を読み込ませる（ooku:agents pane 0）
+    sleep 2
+    log_info "  └─ 御台所に指示書を伝達中..."
+    tmux send-keys -t "ooku:agents.${PANE_BASE}" "instructions/karo.md を読んで役割を理解せよ。汝は御台所（内部システム管理担当）である。"
+    sleep 0.5
+    tmux send-keys -t "ooku:agents.${PANE_BASE}" Enter
+
+    # 部屋子1-3に指示書を読み込ませる（ooku:agents pane 1-3、内部agent_id: ashigaru6-8）
+    sleep 2
+    log_info "  └─ 部屋子に指示書を伝達中..."
+    HEYAGO_NAMES=("部屋子1" "部屋子2" "部屋子3")
+    HEYAGO_ASHIGARU_NUMS=(6 7 8)
+    for i in {0..2}; do
+        p=$((PANE_BASE + 1 + i))
+        ashigaru_num=${HEYAGO_ASHIGARU_NUMS[$i]}
+        tmux send-keys -t "ooku:agents.${p}" "instructions/ashigaru.md を読んで役割を理解せよ。汝は${HEYAGO_NAMES[$i]}（内部ID: ashigaru${ashigaru_num}）である。御台所配下の調査実働部隊じゃ。"
+        sleep 0.3
+        tmux send-keys -t "ooku:agents.${p}" Enter
+        sleep 0.5
+    done
+
+    # お針子に指示書を読み込ませる（ooku:agents pane 4）
+    sleep 2
+    log_info "  └─ お針子に指示書を伝達中..."
+    p=$((PANE_BASE + 4))
+    tmux send-keys -t "ooku:agents.${p}" "instructions/ohariko.md を読んで役割を理解せよ。汝はお針子（監査・先行割当担当）である。"
+    sleep 0.3
+    tmux send-keys -t "ooku:agents.${p}" Enter
+
     log_success "✅ 全軍に指示書伝達完了"
     echo ""
 fi
@@ -694,6 +820,14 @@ if [ -n "$NTFY_TOPIC" ]; then
     nohup bash "$SCRIPT_DIR/scripts/ntfy_listener.sh" &>/dev/null &
     disown
     log_info "📱 ntfy入力リスナー起動 (topic: $NTFY_TOPIC)"
+
+    # ntfy_watcher.py（存在する場合のみ起動）
+    if [ -f "$SCRIPT_DIR/scripts/ntfy_watcher.py" ]; then
+        pkill -f "ntfy_watcher.py" 2>/dev/null || true
+        nohup python3 "$SCRIPT_DIR/scripts/ntfy_watcher.py" &>/dev/null &
+        disown
+        log_info "📱 ntfy_watcher.py 起動完了"
+    fi
 else
     log_info "📱 ntfy未設定のためリスナーはスキップ"
 fi
@@ -730,6 +864,18 @@ echo "     │ashigaru2│ashigaru5│ashigaru8│"
 echo "     │ (足軽2) │ (足軽5) │ (足軽8) │"
 echo "     └─────────┴─────────┴─────────┘"
 echo ""
+echo "     【ookuセッション】御台所・部屋子・お針子の陣（5ペイン）"
+echo "     ┌───────────┬──────────┬──────────┐"
+echo "     │           │ heyago1  │          │"
+echo "     │           │ (部屋子1)│          │"
+echo "     │           ├──────────┤          │"
+echo "     │midaidokoro│ heyago2  │ ohariko  │"
+echo "     │ (御台所)  │ (部屋子2)│(お針子)  │"
+echo "     │           ├──────────┤          │"
+echo "     │           │ heyago3  │          │"
+echo "     │           │ (部屋子3)│          │"
+echo "     └───────────┴──────────┴──────────┘"
+echo ""
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════════════╗"
@@ -746,9 +892,15 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  │  tmux send-keys -t shogun:main \\                         │"
     echo "  │    'claude --dangerously-skip-permissions' Enter         │"
     echo "  │                                                          │"
-    echo "  │  # 家老・足軽を一斉召喚                                  │"
-    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do                                 │"
+    echo "  │  # 家老・足軽を一斉召喚 (multiagent)                       │"
+    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do         │"
     echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
+    echo "  │      'claude --dangerously-skip-permissions' Enter       │"
+    echo "  │  done                                                    │"
+    echo "  │                                                          │"
+    echo "  │  # 御台所・部屋子・お針子を一斉召喚 (ooku)                  │"
+    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+4))); do         │"
+    echo "  │      tmux send-keys -t ooku:agents.\$p \\                  │"
     echo "  │      'claude --dangerously-skip-permissions' Enter       │"
     echo "  │  done                                                    │"
     echo "  └──────────────────────────────────────────────────────────┘"
@@ -762,6 +914,9 @@ echo "  │     tmux attach-session -t shogun   (または: css)        │"
 echo "  │                                                          │"
 echo "  │  家老・足軽の陣を確認する:                                │"
 echo "  │     tmux attach-session -t multiagent   (または: csm)    │"
+echo "  │                                                          │"
+echo "  │  御台所・部屋子・お針子の陣を確認する:                     │"
+echo "  │     tmux attach-session -t ooku   (または: cso)          │"
 echo "  │                                                          │"
 echo "  │  ※ 各エージェントは指示書を読み込み済み。                 │"
 echo "  │    すぐに命令を開始できます。                             │"
@@ -780,8 +935,8 @@ if [ "$OPEN_TERMINAL" = true ]; then
 
     # Windows Terminal が利用可能か確認
     if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
-        log_success "  └─ ターミナルタブ展開完了"
+        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent" \; new-tab wsl.exe -e bash -c "tmux attach-session -t ooku"
+        log_success "  └─ ターミナルタブ展開完了（shogun, multiagent, ooku）"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
     fi

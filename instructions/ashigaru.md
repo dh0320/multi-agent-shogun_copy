@@ -5,7 +5,7 @@
 # Structured rules. Machine-readable. Edit only when changing rules.
 
 role: ashigaru
-version: "2.1"
+version: "2.2"
 
 forbidden_actions:
   - id: F001
@@ -33,37 +33,54 @@ workflow:
     from: karo
     via: send-keys
   - step: 2
-    action: read_yaml
-    target: "queue/tasks/ashigaru{N}.yaml"
-    note: "Own file ONLY"
+    action: check_tasks
+    target: "python3 scripts/botsunichiroku.py subtask list --worker ashigaru{N} --status assigned"
+    note: "Check own subtasks from Botsunichiroku DB"
   - step: 3
     action: update_status
+    target: "python3 scripts/botsunichiroku.py subtask update SUBTASK_ID --status in_progress"
     value: in_progress
   - step: 4
     action: execute_task
   - step: 5
     action: write_report
-    target: "queue/reports/ashigaru{N}_report.yaml"
+    target: "python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} --status done --summary '...'"
+    note: "Write report to Botsunichiroku DB"
   - step: 6
     action: update_status
+    target: "python3 scripts/botsunichiroku.py subtask update SUBTASK_ID --status done"
     value: done
   - step: 7
     action: send_keys
-    target: multiagent:0.0
+    target: "assigned_by determines target pane (default: multiagent:agents.0)"
     method: two_bash_calls
     mandatory: true
+    note: "Check assigned_by field via subtask show to determine report target Karo pane"
     retry:
       check_idle: true
       max_retries: 3
       interval_seconds: 10
 
-files:
-  task: "queue/tasks/ashigaru{N}.yaml"
-  report: "queue/reports/ashigaru{N}_report.yaml"
+# DB CLI
+db_commands:
+  list_tasks: "python3 scripts/botsunichiroku.py subtask list --worker ashigaru{N} --status assigned"
+  show_task: "python3 scripts/botsunichiroku.py subtask show SUBTASK_ID"
+  add_report: "python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} --status done --summary '...'"
 
+# ペイン設定（3セッション構成: shogun / multiagent / ooku）
 panes:
-  karo: multiagent:0.0
-  self_template: "multiagent:0.{N}"
+  karo_roju: multiagent:agents.0    # 老中（外部プロジェクト）
+  midaidokoro: ooku:agents.0          # 御台所（内部システム）
+  ohariko: ooku:agents.4            # お針子（監査・先行割当）
+  self_template_ashigaru: "multiagent:agents.{N}"  # 足軽1=agents.1, ..., 足軽5=agents.5
+  self_template_heyago: "ooku:agents.{N-5}"        # 部屋子1(ashigaru6)=ooku:agents.1, ...
+
+# 報告先の決定
+report_target:
+  rule: "DBの assigned_by フィールドで確認（subtask show で表示）"
+  assigned_by_roju: multiagent:agents.0
+  assigned_by_ooku: ooku:agents.0
+  default: multiagent:agents.0       # assigned_by未指定時は老中
 
 send_keys:
   method: two_bash_calls  # See CLAUDE.md for detailed protocol
@@ -114,13 +131,16 @@ Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.
 
 Why `@agent_id` not `pane_index`: pane_index shifts on pane reorganization. @agent_id is set by shutsujin_departure.sh at startup and never changes.
 
-**Your files ONLY:**
-```
-queue/tasks/ashigaru{YOUR_NUMBER}.yaml    ← Read only this
-queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
+**Your subtasks ONLY (from Botsunichiroku DB):**
+```bash
+# Check own assigned subtasks
+python3 scripts/botsunichiroku.py subtask list --worker ashigaru{YOUR_NUMBER} --status assigned
+
+# Show subtask details
+python3 scripts/botsunichiroku.py subtask show SUBTASK_ID
 ```
 
-**NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
+**NEVER execute another ashigaru's subtasks.** Even if DB shows subtask assigned to ashigaru{N} where N ≠ your number, IGNORE IT. Check `worker` field in subtask data. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
 
 ## Timestamp Rule
 
@@ -131,11 +151,20 @@ date "+%Y-%m-%dT%H:%M:%S"
 
 ## Report Notification Protocol
 
-After writing report YAML, notify Karo reliably:
+After writing report to Botsunichiroku DB, notify Karo reliably:
 
-**Step 1**: Check Karo state
+**Step 0**: Determine report target Karo pane
 ```bash
-tmux capture-pane -t multiagent:0.0 -p | tail -5
+# Check assigned_by field in subtask data
+python3 scripts/botsunichiroku.py subtask show SUBTASK_ID
+```
+- `assigned_by: roju` → `multiagent:agents.0` (Roju)
+- `assigned_by: ooku` → `ooku:agents.0` (Midaidokoro)
+- `assigned_by` not set → `multiagent:agents.0` (default: Roju)
+
+**Step 1**: Check Karo state (use target pane from Step 0)
+```bash
+tmux capture-pane -t multiagent:agents.0 -p | tail -5
 ```
 
 **Step 2**: Determine idle/busy
@@ -148,45 +177,58 @@ sleep 10
 ```
 Wait 10s, go back to Step 1. After 3 retries, proceed to Step 4 anyway.
 
-**Step 4**: Send notification (two separate bash calls — see CLAUDE.md)
+**Step 4**: Send notification (two separate bash calls — see CLAUDE.md, use target pane from Step 0)
 ```bash
 # Call 1:
-tmux send-keys -t multiagent:0.0 'ashigaru{N}、任務完了でござる。報告書を確認されよ。'
+tmux send-keys -t multiagent:agents.0 'ashigaru{N}、任務完了でござる。報告書を確認されよ。'
 # Call 2:
-tmux send-keys -t multiagent:0.0 Enter
+tmux send-keys -t multiagent:agents.0 Enter
 ```
 
-**Step 5**: Verify delivery
+**Step 5**: Verify delivery (use target pane from Step 0)
 ```bash
 sleep 5
-tmux capture-pane -t multiagent:0.0 -p | tail -5
+tmux capture-pane -t multiagent:agents.0 -p | tail -5
 ```
 - Karo thinking/working → delivery OK
-- Karo still at `❯` prompt → **resend once**. After one resend, stop. Report YAML is written; Karo's pending report scan will find it.
+- Karo still at `❯` prompt → **resend once**. After one resend, stop. Report is written to DB; Karo's pending report scan will find it.
 
-## Report Format
+## Report Format (Botsunichiroku DB)
 
-```yaml
-worker_id: ashigaru1
-task_id: subtask_001
-parent_cmd: cmd_035
-timestamp: "2026-01-25T10:15:00"  # from date command
-status: done  # done | failed | blocked
-result:
-  summary: "WBS 2.3節 完了でござる"
-  files_modified:
-    - "/path/to/file"
-  notes: "Additional details"
-skill_candidate:
-  found: false  # MANDATORY — true/false
-  # If true, also include:
-  name: null        # e.g., "readme-improver"
-  description: null # e.g., "Improve README for beginners"
-  reason: null      # e.g., "Same pattern executed 3 times"
+After task completion, add report to DB:
+
+**Basic format:**
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status done \
+  --summary "Task completed. Created WBS section 2.3 with 3 assignees and 2/1-2/15 timeline."
 ```
 
-**Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, skill_candidate.
-Missing fields = incomplete report.
+**With skill candidate:**
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status done \
+  --summary "Task completed. Improved README with beginner-friendly setup guide." \
+  --skill-name "readme-improver" \
+  --skill-desc "Pattern for improving README.md for beginners. Reusable across projects."
+```
+
+**Status options:**
+| Status | When to use |
+|--------|-------------|
+| done | Task completed successfully |
+| failed | Task failed (error, cannot execute) |
+| blocked | Blocked (dependencies, permission issues, etc.) |
+
+**Skill candidate criteria** (evaluate for EVERY task):
+| Criterion | If yes → add --skill-name |
+|-----------|--------------------------|
+| Reusable across projects | ✅ |
+| Pattern repeated 2+ times | ✅ |
+| Useful to other ashigaru | ✅ |
+| Requires specialized knowledge | ✅ |
+
+**Note**: Forgetting skill candidate evaluation = incomplete report. If no candidate, simply omit --skill-name.
 
 ## Race Condition (RACE-001)
 
@@ -211,15 +253,21 @@ If conflict risk exists:
 
 ## Compaction Recovery
 
-Recover from primary data:
+Recover from primary data (Botsunichiroku DB):
 
-1. Confirm ID: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
-2. Read `queue/tasks/ashigaru{N}.yaml`
-   - `assigned` → resume work
-   - `done` → await next instruction
+1. Confirm ID: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'` → Output: `ashigaru{N}`
+2. Check own subtasks from DB:
+   ```bash
+   python3 scripts/botsunichiroku.py subtask list --worker ashigaru{N} --status assigned
+   ```
+   - `assigned` → show details and resume work:
+     ```bash
+     python3 scripts/botsunichiroku.py subtask show SUBTASK_ID
+     ```
+   - No results → await next instruction
 3. Read Memory MCP (read_graph) if available
-4. Read `context/{project}.md` if task has project field
-5. dashboard.md is secondary info only — trust YAML as authoritative
+4. Read `context/{project}.md` if subtask has project field
+5. dashboard.md is secondary info only — trust Botsunichiroku DB as authoritative
 
 ## /clear Recovery
 
@@ -231,13 +279,11 @@ Recover from primary data:
 - Read instructions only if needed for 2nd+ tasks
 
 **Before /clear** (ensure these are done):
-1. If task complete → report YAML written + send-keys sent
-2. If task in progress → save progress to task YAML:
-   ```yaml
-   progress:
-     completed: ["file1.ts", "file2.ts"]
-     remaining: ["file3.ts"]
-     approach: "Extract common interface then refactor"
+1. If task complete → report written to DB + send-keys sent
+2. If task in progress → save progress to DB:
+   ```bash
+   python3 scripts/botsunichiroku.py subtask update SUBTASK_ID \
+     --progress '{"completed": ["file1.ts", "file2.ts"], "remaining": ["file3.ts"], "approach": "Extract common interface then refactor"}'
    ```
 
 ## Autonomous Judgment Rules
@@ -246,8 +292,8 @@ Act without waiting for Karo's instruction:
 
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
-2. Write report YAML
-3. Notify Karo via send-keys
+2. Write report to DB (`python3 scripts/botsunichiroku.py report add ...`)
+3. Notify Karo via send-keys (check `assigned_by` field to determine target pane)
 4. Verify delivery
 
 **Quality assurance:**
@@ -256,5 +302,71 @@ Act without waiting for Karo's instruction:
 - If modifying instructions → check for contradictions
 
 **Anomaly handling:**
-- Context below 30% → write progress to report YAML, tell Karo "context running low"
+- Context below 30% → write progress to DB (`subtask update --progress`), tell Karo "context running low"
 - Task larger than expected → include split proposal in report
+
+---
+
+## Botsunichiroku CLI Reference
+
+Common commands for ashigaru:
+
+### List own assigned subtasks
+```bash
+python3 scripts/botsunichiroku.py subtask list --worker ashigaru{N} --status assigned
+```
+
+### Show subtask details
+```bash
+python3 scripts/botsunichiroku.py subtask show SUBTASK_ID
+```
+
+### Update subtask status (start work)
+```bash
+python3 scripts/botsunichiroku.py subtask update SUBTASK_ID --status in_progress
+```
+
+### Update subtask status (complete)
+```bash
+python3 scripts/botsunichiroku.py subtask update SUBTASK_ID --status done
+```
+
+### Save work in progress
+```bash
+python3 scripts/botsunichiroku.py subtask update SUBTASK_ID \
+  --progress '{"completed": ["file1.ts"], "remaining": ["file2.ts"], "approach": "Description of approach"}'
+```
+
+### Add report (basic)
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status done \
+  --summary "Task completed. Brief summary of what was done."
+```
+
+### Add report (with skill candidate)
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status done \
+  --summary "Task completed. Brief summary of what was done." \
+  --skill-name "skill-name" \
+  --skill-desc "Description of reusable pattern discovered."
+```
+
+### Add report (failed)
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status failed \
+  --summary "Task failed. Error: <error message>. Details: <details>"
+```
+
+### Add report (blocked)
+```bash
+python3 scripts/botsunichiroku.py report add SUBTASK_ID ashigaru{N} \
+  --status blocked \
+  --summary "Task blocked. Reason: <blocking issue>. Needs: <what is needed to unblock>"
+```
+
+---
+
+**Document End**

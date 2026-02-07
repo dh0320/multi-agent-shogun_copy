@@ -34,8 +34,9 @@ workflow:
     from: shogun
     via: send-keys
   - step: 2
-    action: read_yaml
-    target: queue/shogun_to_karo.yaml
+    action: read_db
+    command: "python3 scripts/botsunichiroku.py cmd show <cmd_id>"
+    note: "Read command details from Botsunichiroku DB (primary data source)"
   - step: 3
     action: update_dashboard
     target: dashboard.md
@@ -45,8 +46,9 @@ workflow:
   - step: 5
     action: decompose_tasks
   - step: 6
-    action: write_yaml
-    target: "queue/tasks/ashigaru{N}.yaml"
+    action: db_insert
+    command: "python3 scripts/botsunichiroku.py subtask add --cmd <cmd_id> --worker ashigaru{N} --desc '...'"
+    note: "Insert subtasks into DB instead of writing YAML files"
   - step: 6.5
     action: set_pane_task
     command: 'tmux set-option -p -t multiagent:0.{N} @current_task "short task label"'
@@ -57,23 +59,25 @@ workflow:
     method: two_bash_calls
   - step: 8
     action: check_pending
-    note: "If pending cmds remain in shogun_to_karo.yaml → loop to step 2. Otherwise stop."
+    command: "python3 scripts/botsunichiroku.py cmd list --status pending"
+    note: "If pending cmds remain in DB → loop to step 2. Otherwise stop."
   # === Report Reception Phase ===
   - step: 9
     action: receive_wakeup
     from: ashigaru
     via: send-keys
   - step: 10
-    action: scan_all_reports
-    target: "queue/reports/ashigaru*_report.yaml"
-    note: "Scan ALL reports, not just the one who woke you. Communication loss safety net."
+    action: db_query
+    command: "python3 scripts/botsunichiroku.py report list --cmd <cmd_id>"
+    note: "Query ALL reports from DB, not just the one who woke you. Communication loss safety net."
   - step: 11
     action: update_dashboard
     target: dashboard.md
     section: "戦果"
   - step: 11.5
     action: unblock_dependent_tasks
-    note: "Scan all task YAMLs for blocked_by containing completed task_id. Remove and unblock."
+    command: "python3 scripts/botsunichiroku.py subtask update <subtask_id> --status assigned"
+    note: "Update DB status to unblock dependent tasks (blocked_by field check)"
   - step: 11.7
     action: voiceflow_notify
     note: "Update streaks.yaml and send ntfy notification. See VoiceFlow section."
@@ -84,18 +88,21 @@ workflow:
       Border shows: "ashigaru1 (Sonnet)" when idle, "ashigaru1 (Sonnet) VF要件v2" when working.
   - step: 12.5
     action: check_pending_after_report
+    command: "python3 scripts/botsunichiroku.py cmd list --status pending"
     note: |
-      After report processing, check queue/shogun_to_karo.yaml for unprocessed pending cmds.
+      After report processing, check DB for unprocessed pending cmds.
       If pending exists → go back to step 2 (process new cmd).
       If no pending → stop (await next send-keys wakeup).
       WHY: Shogun may have added new cmds while karo was processing reports.
       Same logic as step 8's check_pending, but executed after report reception flow too.
 
 files:
-  input: queue/shogun_to_karo.yaml
-  task_template: "queue/tasks/ashigaru{N}.yaml"
-  report_pattern: "queue/reports/ashigaru{N}_report.yaml"
+  db: data/botsunichiroku.db
+  db_cli: scripts/botsunichiroku.py
   dashboard: dashboard.md
+  legacy_input: queue/shogun_to_karo.yaml  # Archived (cmd_082で移行完了)
+  legacy_tasks: "queue/tasks/ashigaru{N}.yaml"  # Archived
+  legacy_reports: "queue/reports/ashigaru{N}_report.yaml"  # Archived
 
 panes:
   self: multiagent:0.0
@@ -222,8 +229,8 @@ Report via dashboard.md update only. Reason: interrupt prevention during lord's 
 
 ### Multiple Pending Cmds Processing
 
-1. List all pending cmds in `queue/shogun_to_karo.yaml`
-2. For each cmd: decompose → write YAML → send-keys → **skip confirmation, next cmd**
+1. Query all pending cmds from DB: `python3 scripts/botsunichiroku.py cmd list --status pending`
+2. For each cmd: decompose → insert subtasks to DB → send-keys → **skip confirmation, next cmd**
 3. After all cmds processed: check background confirmations, resend once if needed
 4. Step 8 (check_pending) for final verification
 5. No pending → stop
@@ -250,29 +257,33 @@ Before assigning tasks, ask yourself these five questions:
     ashigaru2: Complete beginner persona — UX simulation
 ```
 
-## Task YAML Format
+## Task DB Format
 
-```yaml
+Tasks are managed in Botsunichiroku DB (`data/botsunichiroku.db`). Use the CLI to create and manage subtasks.
+
+```bash
 # Standard task (no dependencies)
-task:
-  task_id: subtask_001
-  parent_cmd: cmd_001
-  bloom_level: L3        # L1-L3=Sonnet, L4-L6=Opus
-  description: "Create hello1.md with content 'おはよう1'"
-  target_path: "/mnt/c/tools/multi-agent-shogun/hello1.md"
-  status: assigned
-  timestamp: "2026-01-25T12:00:00"
+python3 scripts/botsunichiroku.py subtask add \
+  --cmd cmd_001 \
+  --worker ashigaru1 \
+  --bloom L3 \
+  --desc "Create hello1.md with content 'おはよう1'" \
+  --target "/home/yasu/multi-agent-shogun/hello1.md"
 
 # Dependent task (blocked until prerequisites complete)
-task:
-  task_id: subtask_003
-  parent_cmd: cmd_001
-  bloom_level: L6
-  blocked_by: [subtask_001, subtask_002]
-  description: "Integrate research results from ashigaru 1 and 2"
-  target_path: "/mnt/c/tools/multi-agent-shogun/reports/integrated_report.md"
-  status: blocked         # Initial status when blocked_by exists
-  timestamp: "2026-01-25T12:00:00"
+python3 scripts/botsunichiroku.py subtask add \
+  --cmd cmd_001 \
+  --worker ashigaru3 \
+  --bloom L6 \
+  --blocked-by subtask_001,subtask_002 \
+  --desc "Integrate research results from ashigaru 1 and 2" \
+  --target "/home/yasu/multi-agent-shogun/reports/integrated_report.md"
+
+# Check subtask details
+python3 scripts/botsunichiroku.py subtask show subtask_001
+
+# Update subtask status
+python3 scripts/botsunichiroku.py subtask update subtask_001 --status done
 ```
 
 ## "Wake = Full Scan" Pattern
@@ -287,10 +298,18 @@ Claude Code cannot "wait". Prompt-wait = stopped.
 
 ## Report Scanning (Communication Loss Safety)
 
-On every wakeup (regardless of reason), scan ALL `queue/reports/ashigaru*_report.yaml`.
+On every wakeup (regardless of reason), query ALL reports from Botsunichiroku DB.
 Cross-reference with dashboard.md — process any reports not yet reflected.
 
-**Why**: Ashigaru send-keys may not arrive (karo was busy, Enter consumed by permission prompt, etc.). Report files are already written and scannable.
+```bash
+# Query all reports for a specific command
+python3 scripts/botsunichiroku.py report list --cmd cmd_001
+
+# Query all unprocessed reports
+python3 scripts/botsunichiroku.py report list --status done
+```
+
+**Why**: Ashigaru send-keys may not arrive (karo was busy, Enter consumed by permission prompt, etc.). Reports are already written to DB and queryable.
 
 ## RACE-001: No Concurrent Writes
 
@@ -394,7 +413,7 @@ Push notifications to the lord's phone via ntfy. Karo manages streaks and notifi
 ### cmd Completion Check (Step 11.7)
 
 1. Get `parent_cmd` of completed subtask
-2. Check all subtasks with same `parent_cmd`: `grep -l "parent_cmd: cmd_XXX" queue/tasks/ashigaru*.yaml | xargs grep "status:"`
+2. Query all subtasks for that cmd: `python3 scripts/botsunichiroku.py subtask list --cmd cmd_XXX`
 3. Not all done → skip notification
 4. All done → update `voiceflow/streaks.yaml`:
    - `today.completed` += 1 (**per cmd**, not per subtask)
@@ -462,8 +481,9 @@ After task completion report received, before next task assignment.
 ```
 STEP 1: Confirm report + update dashboard
 
-STEP 2: Write next task YAML first (YAML-first principle)
-  → queue/tasks/ashigaru{N}.yaml — ready for ashigaru to read after /clear
+STEP 2: Insert next task into DB first (DB-first principle)
+  python3 scripts/botsunichiroku.py subtask add --cmd <cmd_id> --worker ashigaru{N} --desc "..."
+  → Subtask registered in DB — ready for ashigaru to query after /clear
 
 STEP 3: Reset pane title (after ashigaru is idle — ❯ visible)
   tmux select-pane -t multiagent:0.{N} -T "Sonnet"   # ashigaru 1-4
@@ -480,7 +500,7 @@ STEP 5: Confirm /clear completion
   → ❯ visible = done. Retry up to 3 times with 5s wait.
 
 STEP 6: Send task instruction (2-call pattern)
-  tmux send-keys -t multiagent:0.{N} 'queue/tasks/ashigaru{N}.yaml に任務がある。確認して実行せよ。'
+  tmux send-keys -t multiagent:0.{N} 'python3 scripts/botsunichiroku.py subtask show subtask_XXX で任務を確認し実行せよ。'
   tmux send-keys -t multiagent:0.{N} Enter
 ```
 
@@ -560,7 +580,8 @@ tmux set-option -p -t multiagent:0.{N} @model_name '<DisplayName>'
 ### Compaction Recovery: Model State Check
 
 ```bash
-grep -l "model_override" queue/tasks/ashigaru*.yaml
+# Check model overrides in assigned subtasks
+python3 scripts/botsunichiroku.py subtask list --status assigned | grep model_override
 ```
 - `model_override: opus` on ashigaru 1-4 → currently promoted
 - `model_override: sonnet` on ashigaru 5-8 → currently demoted
@@ -588,20 +609,23 @@ External PRs are reinforcements. Treat with respect.
 
 ### Primary Data Sources
 
-1. `queue/shogun_to_karo.yaml` — current cmd (check status: pending/done)
-2. `queue/tasks/ashigaru{N}.yaml` — all ashigaru assignments
-3. `queue/reports/ashigaru{N}_report.yaml` — unreflected reports?
-4. `Memory MCP (read_graph)` — system settings, lord's preferences
-5. `context/{project}.md` — project-specific knowledge (if exists)
+1. **Botsunichiroku DB** — all commands, subtasks, reports (authoritative source of truth)
+   ```bash
+   python3 scripts/botsunichiroku.py cmd list --status in_progress
+   python3 scripts/botsunichiroku.py subtask list --status assigned
+   python3 scripts/botsunichiroku.py report list --status done
+   ```
+2. `Memory MCP (read_graph)` — system settings, lord's preferences
+3. `context/{project}.md` — project-specific knowledge (if exists)
 
-**dashboard.md is secondary** — may be stale after compaction. YAMLs are ground truth.
+**dashboard.md is secondary** — may be stale after compaction. Botsunichiroku DB is ground truth.
 
 ### Recovery Steps
 
-1. Check current cmd in `shogun_to_karo.yaml`
-2. Check all ashigaru assignments in `queue/tasks/`
-3. Scan `queue/reports/` for unprocessed reports
-4. Reconcile dashboard.md with YAML ground truth, update if needed
+1. Query current cmd from DB: `python3 scripts/botsunichiroku.py cmd list --status in_progress`
+2. Query all ashigaru assignments: `python3 scripts/botsunichiroku.py subtask list --status assigned`
+3. Query unprocessed reports: `python3 scripts/botsunichiroku.py report list --status done`
+4. Reconcile dashboard.md with DB ground truth, update if needed
 5. Resume work on incomplete tasks
 
 ## Context Loading Procedure
@@ -609,10 +633,80 @@ External PRs are reinforcements. Treat with respect.
 1. CLAUDE.md (auto-loaded)
 2. Memory MCP (`read_graph`)
 3. `config/projects.yaml` — project list
-4. `queue/shogun_to_karo.yaml` — current instructions
+4. Query Botsunichiroku DB for current commands and subtasks
 5. If task has `project` field → read `context/{project}.md`
 6. Read related files
 7. Report loading complete, then begin decomposition
+
+## Botsunichiroku CLI Reference (Karo Commands)
+
+Frequently used commands for task management in Botsunichiroku DB.
+
+### Command Operations
+
+```bash
+# Show command details
+python3 scripts/botsunichiroku.py cmd show cmd_001
+
+# List commands by status
+python3 scripts/botsunichiroku.py cmd list --status in_progress
+python3 scripts/botsunichiroku.py cmd list --status pending
+
+# Update command status
+python3 scripts/botsunichiroku.py cmd update cmd_001 --status done
+```
+
+### Subtask Operations
+
+```bash
+# Add new subtask
+python3 scripts/botsunichiroku.py subtask add \
+  --cmd cmd_001 \
+  --worker ashigaru1 \
+  --bloom L3 \
+  --desc "Task description here" \
+  --target "/path/to/file"
+
+# Add subtask with dependencies
+python3 scripts/botsunichiroku.py subtask add \
+  --cmd cmd_001 \
+  --worker ashigaru2 \
+  --bloom L6 \
+  --blocked-by subtask_001 \
+  --desc "Dependent task"
+
+# Show subtask details
+python3 scripts/botsunichiroku.py subtask show subtask_001
+
+# List subtasks by status
+python3 scripts/botsunichiroku.py subtask list --status assigned
+python3 scripts/botsunichiroku.py subtask list --status in_progress
+python3 scripts/botsunichiroku.py subtask list --cmd cmd_001
+
+# Update subtask status
+python3 scripts/botsunichiroku.py subtask update subtask_001 --status assigned
+python3 scripts/botsunichiroku.py subtask update subtask_001 --status done
+```
+
+### Report Operations
+
+```bash
+# List reports for a command
+python3 scripts/botsunichiroku.py report list --cmd cmd_001
+
+# List reports by worker
+python3 scripts/botsunichiroku.py report list --worker ashigaru1
+
+# List reports by status
+python3 scripts/botsunichiroku.py report list --status done
+```
+
+### Statistics
+
+```bash
+# Show overall statistics
+python3 scripts/botsunichiroku.py stats
+```
 
 ## Autonomous Judgment (Act Without Being Told)
 

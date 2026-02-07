@@ -61,14 +61,14 @@
 |---|---|---|---|---|
 | **アーキテクチャ** | 1プロセス内のサブエージェント | グラフベースの状態機械 | ロールベースエージェント | tmux経由の階層構造 |
 | **並列性** | 逐次実行（1つずつ） | 並列ノード（v0.2+） | 限定的 | **8体の独立エージェント** |
-| **連携コスト** | TaskごとにAPIコール | API + インフラ（Postgres/Redis） | API + CrewAIプラットフォーム | **ゼロ**（YAML + tmux） |
+| **連携コスト** | TaskごとにAPIコール | API + インフラ（Postgres/Redis） | API + CrewAIプラットフォーム | **ゼロ**（SQLite + tmux） |
 | **可観測性** | Claudeのログのみ | LangSmith連携 | OpenTelemetry | **ライブtmuxペイン** + ダッシュボード |
 | **スキル発見** | なし | なし | なし | **ボトムアップ自動提案** |
 | **セットアップ** | Claude Code内蔵 | 重い（インフラ必要） | pip install | シェルスクリプト |
 
 ### 他のフレームワークとの違い
 
-**連携コストゼロ** — エージェント間の通信はディスク上のYAMLファイル。APIコールは実際の作業にのみ使われ、オーケストレーションには使われません。8体のエージェントを動かしても、支払うのは8体分の作業コストだけです。
+**連携コストゼロ** — エージェント間の通信は軽量SQLiteデータベース（botsunichiroku.db）。重いインフラ不要 — DBファイル1つだけ。APIコールは実際の作業にのみ使われ、オーケストレーションには使われません。8体のエージェントを動かしても、支払うのは8体分の作業コストだけです。
 
 **完全な透明性** — すべてのエージェントが見えるtmuxペインで動作。すべての指示・報告・判断がプレーンなYAMLファイルで、読んで、diffして、バージョン管理できます。ブラックボックスなし。
 
@@ -300,6 +300,9 @@ wsl --install
 | `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
 | `first_setup.sh` | tmux、Node.js、Claude Code CLI のインストール + Memory MCP設定 | 初回のみ |
 | `shutsujin_departure.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み + ntfyリスナー起動 | 毎日 |
+| `botsunichiroku.py` | データベースCLI（指令・サブタスク・報告の一覧/追加/更新） | 随時 |
+| `init_db.py` | SQLiteデータベース初期化 | 初回 / リセット時 |
+| `generate_dashboard.py` | DBからdashboard.md再生成 | 随時 |
 
 ### `install.bat` が自動で行うこと：
 - ✅ WSL2がインストールされているかチェック（未インストールなら案内）
@@ -467,7 +470,7 @@ screenshot:
 |---------|------|------|
 | Layer 1: Memory MCP | `memory/shogun_memory.jsonl` | プロジェクト横断・セッションを跨ぐ長期記憶 |
 | Layer 2: Project | `config/projects.yaml`, `projects/<id>.yaml`, `context/{project}.md` | プロジェクト固有情報・技術知見 |
-| Layer 3: YAML Queue | `queue/shogun_to_karo.yaml`, `queue/tasks/`, `queue/reports/` | タスク管理・指示と報告の正データ |
+| Layer 3: SQLite DB | `data/botsunichiroku.db` — commands, subtasks, reports, agents, counters | タスク管理・指示と報告の正データ |
 | Layer 4: Session | CLAUDE.md, instructions/*.md | 作業中コンテキスト（/clearで破棄） |
 
 この設計により：
@@ -656,13 +659,13 @@ task:
 5. **障害分離**: 1体の足軽が失敗しても他に影響しない
 6. **人間への報告一元化**: 将軍だけが人間とやり取りするため、情報が整理される
 
-### なぜ YAML + send-keys なのか
+### なぜ SQLite + send-keys なのか
 
-1. **状態の永続化**: YAMLファイルで構造化通信し、エージェント再起動にも耐える
+1. **状態の永続化**: SQLiteデータベースで構造化・クエリ可能な通信を実現し、エージェント再起動にも耐える
 2. **ポーリング不要**: イベント駆動でAPIコストを削減
 3. **割り込み防止**: エージェント同士やあなたの入力への割り込みを防止
-4. **デバッグ容易**: 人間がYAMLを直接読んで状況把握できる
-5. **競合回避**: 各足軽に専用ファイルを割り当て
+4. **デバッグ容易**: シンプルなCLI（botsunichiroku.py）でDBをクエリして状況把握できる
+5. **競合回避**: トランザクショナルなDB書き込みで競合を防止
 6. **2秒間隔送信**: 複数足軽への連続送信時に `sleep 2` を挟むことで、入力バッファ溢れを防止（到達率14%→87.5%に改善）
 
 ### エージェント識別（@agent_id）
@@ -964,9 +967,16 @@ multi-agent-shogun/
 │   ├── karo.md               # 家老の指示書
 │   └── ashigaru.md           # 足軽の指示書
 │
+├── data/
+│   └── botsunichiroku.db    # SQLiteデータベース（指令・サブタスク・報告）
+│
 ├── scripts/                  # ユーティリティスクリプト
+│   ├── botsunichiroku.py    # データベース操作CLI
+│   ├── init_db.py           # データベース初期化
+│   ├── generate_dashboard.py # DBからdashboard.md自動生成
 │   ├── ntfy.sh               # スマホにプッシュ通知を送信
-│   └── ntfy_listener.sh      # スマホからのメッセージをストリーミング受信
+│   ├── ntfy_listener.sh      # スマホからのメッセージをストリーミング受信
+│   └── ntfy_watcher.py      # Python版ntfyリスナー（ntfy_listener.sh置換）
 │
 ├── config/
 │   ├── settings.yaml         # 言語、ntfy、その他の設定
@@ -1155,6 +1165,8 @@ tmux respawn-pane -t shogun:0.0 -k 'claude --model opus --dangerously-skip-permi
 <details>
 <summary><b>v2.0.0の新機能</b></summary>
 
+- **SQLite移行（botsunichiroku.db）** — 指令・サブタスク・報告をクエリ可能なデータベースに格納。CLI（`botsunichiroku.py`）で操作。YAMLファイルベースのタスク管理を置き換え。
+- **ダッシュボード自動生成** — `generate_dashboard.py` がDB状態からdashboard.mdを自動構築。手動更新を排除。
 - **ntfy双方向通信** — スマホからコマンドを送信、タスク完了時にプッシュ通知を受信
 - **VoiceFlow通知** — ストリーク追跡、Eat the Frog 🐸、行動心理学に基づくモチベーション管理
 - **ペインボーダータスク表示** — tmuxペインボーダーで各エージェントの現在のタスクを一目で確認
