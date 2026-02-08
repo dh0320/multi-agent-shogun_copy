@@ -26,6 +26,52 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
+# エージェント設定を読み取り（デフォルト: claude）
+# agent: claude | codex
+AGENT_SETTING="claude"
+if [ -f "./config/settings.yaml" ]; then
+    AGENT_SETTING=$(grep "^agent:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "claude")
+fi
+if [ -z "$AGENT_SETTING" ]; then
+    AGENT_SETTING="claude"
+fi
+
+# Codex設定（agent: codex の場合に使用）
+# NOTE: config/settings.yaml は git 管理外。存在しない場合は Codex の既定にフォールバックする。
+read_codex_setting() {
+    local key="$1"
+    awk -v key="$key" '
+        /^codex:/ {in_section=1; next}
+        /^[a-zA-Z0-9_]+:/ && !/^codex:/ {in_section=0}
+        in_section && $1 == (key ":") {
+            sub((key ":"), "", $0)
+            gsub(/^[[:space:]]+/, "", $0)
+            gsub(/"/, "", $0)
+            print $0
+            exit
+        }
+    ' ./config/settings.yaml 2>/dev/null || true
+}
+
+CODEX_MODEL="$(read_codex_setting model || true)"
+CODEX_SHOGUN_MODEL="$(read_codex_setting shogun_model || true)"
+CODEX_WORKER_MODEL="$(read_codex_setting worker_model || true)"
+CODEX_SHOGUN_REASONING="$(read_codex_setting shogun_reasoning || true)"
+CODEX_WORKER_REASONING="$(read_codex_setting worker_reasoning || true)"
+CODEX_OPTIONS="$(read_codex_setting options || true)"
+
+# Reasoning defaults (if not set in config)
+[ -n "$CODEX_SHOGUN_REASONING" ] || CODEX_SHOGUN_REASONING="high"
+[ -n "$CODEX_WORKER_REASONING" ] || CODEX_WORKER_REASONING="medium"
+
+get_agent_name() {
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        echo "Codex"
+    else
+        echo "Claude Code"
+    fi
+}
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -542,66 +588,157 @@ log_success "  └─ 家老・足軽の陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: Claude Code 起動（-s / --setup-only のときはスキップ）
+# STEP 6: AIエージェント起動（-s / --setup-only のときはスキップ）
+#   agent: claude | codex (config/settings.yaml)
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    # Claude Code CLI の存在チェック
-    if ! command -v claude &> /dev/null; then
-        log_info "⚠️  claude コマンドが見つかりません"
-        echo "  first_setup.sh を再実行してください:"
-        echo "    ./first_setup.sh"
-        exit 1
-    fi
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        # Codex CLI の存在チェック
+        if ! command -v codex &> /dev/null; then
+            log_info "⚠️  codex コマンドが見つかりません"
+            echo "  Codex CLI を用意してください（例）:"
+            echo "    npm install -g @openai/codex"
+            echo "    もしくは codex.app を利用（codex app）"
+            exit 1
+        fi
 
-    log_war "👑 全軍に Claude Code を召喚中..."
+        # Options default:
+        # - bypass approvals/sandbox: matches upstream low-friction behavior
+        # - steer: Enter submits immediately (otherwise it can look \"stuck\")
+        if [ -z "$CODEX_OPTIONS" ]; then
+            CODEX_OPTIONS="--dangerously-bypass-approvals-and-sandbox --enable steer"
+        else
+            case " $CODEX_OPTIONS " in
+                *" --enable steer "*|*"features.steer=true"*)
+                    ;;
+                *" --disable steer "*|*"features.steer=false"*)
+                    ;;
+                *)
+                    CODEX_OPTIONS="${CODEX_OPTIONS} --enable steer"
+                    ;;
+            esac
+        fi
 
-    # 将軍: Opus（デフォルト）。--shogun-no-thinking で思考無効化
-    if [ "$SHOGUN_NO_THINKING" = true ]; then
-        tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+        log_war "👑 全軍に Codex を召喚中..."
+
+        # Model selection:
+        # - Prefer codex.shogun_model / codex.worker_model if set
+        # - Fallback to codex.model (single-model)
+        CX_SHOGUN_MODEL="${CODEX_SHOGUN_MODEL:-$CODEX_MODEL}"
+        CX_WORKER_MODEL="${CODEX_WORKER_MODEL:-$CODEX_MODEL}"
+        if [ "$KESSEN_MODE" = true ]; then
+            CX_WORKER_MODEL="$CX_SHOGUN_MODEL"
+        fi
+
+        CX_SHOGUN_MODEL_ARG=""
+        if [ -n "$CX_SHOGUN_MODEL" ]; then
+            CX_SHOGUN_MODEL_ARG=" -m ${CX_SHOGUN_MODEL}"
+        fi
+        CX_WORKER_MODEL_ARG=""
+        if [ -n "$CX_WORKER_MODEL" ]; then
+            CX_WORKER_MODEL_ARG=" -m ${CX_WORKER_MODEL}"
+        fi
+
+        # Shogun effort: map --shogun-no-thinking to effort=low
+        SHOGUN_EFFORT="$CODEX_SHOGUN_REASONING"
+        if [ "$SHOGUN_NO_THINKING" = true ]; then
+            SHOGUN_EFFORT="low"
+        fi
+
+        tmux send-keys -t shogun:main "codex${CX_SHOGUN_MODEL_ARG} -c model_reasoning_effort=\\\"${SHOGUN_EFFORT}\\\" ${CODEX_OPTIONS}"
         tmux send-keys -t shogun:main Enter
-        log_info "  └─ 将軍（Opus / thinking無効）、召喚完了"
-    else
-        tmux send-keys -t shogun:main "claude --model opus --dangerously-skip-permissions"
-        tmux send-keys -t shogun:main Enter
-        log_info "  └─ 将軍（Opus / effort: high）、召喚完了"
-    fi
+        log_info "  └─ 将軍（Codex / effort: ${SHOGUN_EFFORT}）、召喚完了"
 
-    # 少し待機（安定のため）
-    sleep 1
+        sleep 1
 
-    # 家老（pane 0）: Opus（Opusのデフォルトはhigh）
-    p=$((PANE_BASE + 0))
-    tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
-    tmux send-keys -t "multiagent:agents.${p}" Enter
-    log_info "  └─ 家老（Opus / effort: high）、召喚完了"
+        # Karo (pane 0) uses shogun model/effort by default
+        p=$((PANE_BASE + 0))
+        tmux send-keys -t "multiagent:agents.${p}" "codex${CX_SHOGUN_MODEL_ARG} -c model_reasoning_effort=\\\"${CODEX_SHOGUN_REASONING}\\\" ${CODEX_OPTIONS}"
+        tmux send-keys -t "multiagent:agents.${p}" Enter
+        log_info "  └─ 家老（Codex / effort: ${CODEX_SHOGUN_REASONING}）、召喚完了"
 
-    if [ "$KESSEN_MODE" = true ]; then
-        # 決戦の陣: 全足軽 Opus（Opusのデフォルトはhigh）
-        for i in {1..8}; do
-            p=$((PANE_BASE + i))
-            tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
-            tmux send-keys -t "multiagent:agents.${p}" Enter
-        done
-        log_info "  └─ 足軽1-8（Opus / effort: high）、決戦の陣で召喚完了"
-    else
-        # 平時の陣: 足軽1-4=Sonnet, 足軽5-8=Opus（effort: max）
+        # Ashigaru:
+        # - 平時: 1-4 = worker model/effort, 5-8 = shogun model/effort
+        # - 決戦: 全軍 = shogun model/effort
+        WORKER_EFFORT_1_4="$CODEX_WORKER_REASONING"
+        WORKER_EFFORT_5_8="$CODEX_SHOGUN_REASONING"
+        if [ "$KESSEN_MODE" = true ]; then
+            WORKER_EFFORT_1_4="$CODEX_SHOGUN_REASONING"
+            WORKER_EFFORT_5_8="$CODEX_SHOGUN_REASONING"
+        fi
+
         for i in {1..4}; do
             p=$((PANE_BASE + i))
-            tmux send-keys -t "multiagent:agents.${p}" "claude --model sonnet --dangerously-skip-permissions"
+            tmux send-keys -t "multiagent:agents.${p}" "codex${CX_WORKER_MODEL_ARG} -c model_reasoning_effort=\\\"${WORKER_EFFORT_1_4}\\\" ${CODEX_OPTIONS}"
             tmux send-keys -t "multiagent:agents.${p}" Enter
         done
-        log_info "  └─ 足軽1-4（Sonnet）、召喚完了"
+        log_info "  └─ 足軽1-4（Codex / effort: ${WORKER_EFFORT_1_4}）、召喚完了"
 
         for i in {5..8}; do
             p=$((PANE_BASE + i))
-            tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+            tmux send-keys -t "multiagent:agents.${p}" "codex${CX_SHOGUN_MODEL_ARG} -c model_reasoning_effort=\\\"${WORKER_EFFORT_5_8}\\\" ${CODEX_OPTIONS}"
             tmux send-keys -t "multiagent:agents.${p}" Enter
         done
-        log_info "  └─ 足軽5-8（Opus / effort: high）、召喚完了"
+        log_info "  └─ 足軽5-8（Codex / effort: ${WORKER_EFFORT_5_8}）、召喚完了"
+    else
+        # Claude Code CLI の存在チェック
+        if ! command -v claude &> /dev/null; then
+            log_info "⚠️  claude コマンドが見つかりません"
+            echo "  first_setup.sh を再実行してください:"
+            echo "    ./first_setup.sh"
+            exit 1
+        fi
+
+        log_war "👑 全軍に Claude Code を召喚中..."
+
+        # 将軍: Opus（デフォルト）。--shogun-no-thinking で思考無効化
+        if [ "$SHOGUN_NO_THINKING" = true ]; then
+            tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+            tmux send-keys -t shogun:main Enter
+            log_info "  └─ 将軍（Opus / thinking無効）、召喚完了"
+        else
+            tmux send-keys -t shogun:main "claude --model opus --dangerously-skip-permissions"
+            tmux send-keys -t shogun:main Enter
+            log_info "  └─ 将軍（Opus / effort: high）、召喚完了"
+        fi
+
+        # 少し待機（安定のため）
+        sleep 1
+
+        # 家老（pane 0）: Opus（Opusのデフォルトはhigh）
+        p=$((PANE_BASE + 0))
+        tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t "multiagent:agents.${p}" Enter
+        log_info "  └─ 家老（Opus / effort: high）、召喚完了"
+
+        if [ "$KESSEN_MODE" = true ]; then
+            # 決戦の陣: 全足軽 Opus（Opusのデフォルトはhigh）
+            for i in {1..8}; do
+                p=$((PANE_BASE + i))
+                tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+                tmux send-keys -t "multiagent:agents.${p}" Enter
+            done
+            log_info "  └─ 足軽1-8（Opus / effort: high）、決戦の陣で召喚完了"
+        else
+            # 平時の陣: 足軽1-4=Sonnet, 足軽5-8=Opus（effort: max）
+            for i in {1..4}; do
+                p=$((PANE_BASE + i))
+                tmux send-keys -t "multiagent:agents.${p}" "claude --model sonnet --dangerously-skip-permissions"
+                tmux send-keys -t "multiagent:agents.${p}" Enter
+            done
+            log_info "  └─ 足軽1-4（Sonnet）、召喚完了"
+
+            for i in {5..8}; do
+                p=$((PANE_BASE + i))
+                tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+                tmux send-keys -t "multiagent:agents.${p}" Enter
+            done
+            log_info "  └─ 足軽5-8（Opus / effort: high）、召喚完了"
+        fi
     fi
 
     if [ "$KESSEN_MODE" = true ]; then
-        log_success "✅ 決戦の陣で出陣！全軍Opus！"
+        log_success "✅ 決戦の陣で出陣！"
     else
         log_success "✅ 平時の陣で出陣"
     fi
@@ -678,16 +815,58 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  Claude Code の起動を待機中（最大30秒）..."
+    echo "  $(get_agent_name) の起動を待機中（最大30秒）..."
 
-    # 将軍の起動を確認（最大30秒待機）
-    for i in {1..30}; do
-        if tmux capture-pane -t shogun:main -p | grep -q "bypass permissions"; then
-            echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
-            break
-        fi
-        sleep 1
-    done
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        # Codex does not auto-load CLAUDE.md, and can appear \"idle\" until it receives
+        # the initial prompt. Inject a minimal bootstrap instruction here.
+        send_codex_bootstrap() {
+            local pane="$1"
+            local instruction="$2"
+            local buf="$3"
+            local msg="$4"
+
+            tmux set-buffer -b "$buf" "$msg"
+            tmux paste-buffer -p -b "$buf" -t "$pane"
+            sleep 0.3
+            tmux send-keys -t "$pane" Enter
+            sleep 0.1
+        }
+
+        SHOGUN_INSTRUCTION="instructions/codex-shogun.md"
+        KARO_INSTRUCTION="instructions/codex-karo.md"
+        ASHIGARU_INSTRUCTION="instructions/codex-ashigaru.md"
+        [ -f "$SHOGUN_INSTRUCTION" ] || SHOGUN_INSTRUCTION="instructions/shogun.md"
+        [ -f "$KARO_INSTRUCTION" ] || KARO_INSTRUCTION="instructions/karo.md"
+        [ -f "$ASHIGARU_INSTRUCTION" ] || ASHIGARU_INSTRUCTION="instructions/ashigaru.md"
+
+        # Give Codex a moment to finish TUI initialization before injecting prompts.
+        sleep 2
+
+        log_info "📜 Codex: 初期指令を投入中..."
+
+        BOOTSTRAP_MSG_SHOGUN="Deployment: Identify yourself via tmux @agent_id, then read CLAUDE.md and ${SHOGUN_INSTRUCTION}. Reply only 'ready'. Then wait for inbox/tasks."
+        send_codex_bootstrap "shogun:main" "$SHOGUN_INSTRUCTION" "shogun_bootstrap" "$BOOTSTRAP_MSG_SHOGUN"
+
+        p=$((PANE_BASE + 0))
+        BOOTSTRAP_MSG_KARO="Deployment: Identify yourself via tmux @agent_id, then read CLAUDE.md and ${KARO_INSTRUCTION}. Reply only 'ready'. Then wait for inbox/tasks."
+        send_codex_bootstrap "multiagent:agents.${p}" "$KARO_INSTRUCTION" "karo_bootstrap" "$BOOTSTRAP_MSG_KARO"
+
+        for i in {1..8}; do
+            p=$((PANE_BASE + i))
+            BOOTSTRAP_MSG_ASHIGARU="Deployment: Identify yourself via tmux @agent_id, then read CLAUDE.md and ${ASHIGARU_INSTRUCTION}. Reply only 'ready'. Then wait for inbox/tasks."
+            send_codex_bootstrap "multiagent:agents.${p}" "$ASHIGARU_INSTRUCTION" "ashigaru${i}_bootstrap" "$BOOTSTRAP_MSG_ASHIGARU"
+        done
+    else
+        # 将軍の起動を確認（最大30秒待機）
+        for i in {1..30}; do
+            if tmux capture-pane -t shogun:main -p | grep -q "bypass permissions"; then
+                echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
+                break
+            fi
+            sleep 1
+        done
+    fi
 
     # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher起動（全エージェント）
@@ -707,27 +886,31 @@ NINJA_EOF
 
     # 将軍のwatcher
     nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" \
-        &>> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" &
+        >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
     disown
 
     # 家老のwatcher
     nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" \
-        &>> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" &
+        >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
     disown
 
     # 足軽のwatcher
     for i in {1..8}; do
         p=$((PANE_BASE + i))
         nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "ashigaru${i}" "multiagent:agents.${p}" \
-            &>> "$SCRIPT_DIR/logs/inbox_watcher_ashigaru${i}.log" &
+            >> "$SCRIPT_DIR/logs/inbox_watcher_ashigaru${i}.log" 2>&1 &
         disown
     done
 
     log_success "  └─ 10エージェント分のinbox_watcher起動完了"
 
-    # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
-    # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。
-    log_info "📜 指示書読み込みは各エージェントが自律実行（CLAUDE.md Session Start）"
+    # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) により各自が自律的に
+    # 自分のinstructions/*.mdを読み込む。Claudeは auto-load、Codex はブートストラップで誘導する。
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        log_info "📜 Codex: 初期指令投入済み（各自 CLAUDE.md Session Start を実行）"
+    else
+        log_info "📜 指示書読み込みは各エージェントが自律実行（CLAUDE.md Session Start）"
+    fi
     echo ""
 fi
 
@@ -785,18 +968,26 @@ echo "  ╚═══════════════════════
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
-    echo "  ⚠️  セットアップのみモード: Claude Codeは未起動です"
+    echo "  ⚠️  セットアップのみモード: $(get_agent_name) は未起動です"
     echo ""
-    echo "  手動でClaude Codeを起動するには:"
+    echo "  手動で$(get_agent_name)を起動するには:"
     echo "  ┌──────────────────────────────────────────────────────────┐"
     echo "  │  # 将軍を召喚                                            │"
     echo "  │  tmux send-keys -t shogun:main \\                         │"
-    echo "  │    'claude --dangerously-skip-permissions' Enter         │"
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        echo "  │    'codex --dangerously-bypass-approvals-and-sandbox --enable steer' Enter │"
+    else
+        echo "  │    'claude --dangerously-skip-permissions' Enter         │"
+    fi
     echo "  │                                                          │"
     echo "  │  # 家老・足軽を一斉召喚                                  │"
     echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do                                 │"
     echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
-    echo "  │      'claude --dangerously-skip-permissions' Enter       │"
+    if [ "$AGENT_SETTING" = "codex" ]; then
+        echo "  │      'codex --dangerously-bypass-approvals-and-sandbox --enable steer' Enter │"
+    else
+        echo "  │      'claude --dangerously-skip-permissions' Enter       │"
+    fi
     echo "  │  done                                                    │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""

@@ -25,6 +25,15 @@ INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
 LOCKFILE="${INBOX}.lock"
 SEND_KEYS_TIMEOUT=5  # seconds — prevents hang (PID 274337 incident)
 
+# Agent mode (claude|codex). This repo runs in a single global mode.
+AGENT_SETTING="claude"
+if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
+    AGENT_SETTING=$(grep "^agent:" "$SCRIPT_DIR/config/settings.yaml" 2>/dev/null | awk '{print $2}' || echo "claude")
+fi
+if [ -z "$AGENT_SETTING" ]; then
+    AGENT_SETTING="claude"
+fi
+
 if [ -z "$AGENT_ID" ] || [ -z "$PANE_TARGET" ]; then
     echo "Usage: inbox_watcher.sh <agent_id> <pane_target>" >&2
     exit 1
@@ -93,12 +102,52 @@ send_cli_command() {
         return 1
     fi
 
-    # /clear needs extra wait time before follow-up
-    if [[ "$cmd" == "/clear" ]]; then
+    # /clear (claude) or /new (codex) needs extra wait time before follow-up
+    if [[ "$cmd" == "/clear" || "$cmd" == "/new" ]]; then
         sleep 3
     else
         sleep 1
     fi
+}
+
+send_model_switch_codex() {
+    # Codex does NOT support inline args for /model ("/model foo" is treated as a normal message).
+    # We map legacy names to Codex auto presets and select via digit:
+    #  1: codex-auto-fast, 2: codex-auto-balanced, 3: codex-auto-thorough
+    local requested="$1"
+    local requested_lc
+    requested_lc=$(echo "$requested" | tr '[:upper:]' '[:lower:]')
+
+    local preset="balanced"
+    case "$requested_lc" in
+        *opus*|*thorough*|*high*)
+            preset="thorough"
+            ;;
+        *sonnet*|*fast*|*low*)
+            preset="fast"
+            ;;
+        *balanced*|*medium*)
+            preset="balanced"
+            ;;
+        *)
+            preset="balanced"
+            ;;
+    esac
+
+    send_cli_command "/model" || return 1
+
+    local key="2"
+    case "$preset" in
+        fast) key="1" ;;
+        balanced) key="2" ;;
+        thorough) key="3" ;;
+    esac
+
+    if ! timeout "$SEND_KEYS_TIMEOUT" tmux send-keys -t "$PANE_TARGET" "$key" 2>/dev/null; then
+        echo "[$(date)] WARNING: send-keys timed out for codex model selection key" >&2
+        return 1
+    fi
+    sleep 0.3
 }
 
 # ─── Send wake-up nudge via send-keys ───
@@ -130,19 +179,42 @@ process_unread() {
     # Handle special CLI commands first (/clear, /model)
     local specials
     specials=$(echo "$info" | python3 -c "
-import sys, json
+import sys, json, base64
 data = json.load(sys.stdin)
 for s in data.get('specials', []):
-    if s['type'] == 'clear_command':
-        print('/clear')
-        print(s['content'])  # post-clear instruction
-    elif s['type'] == 'model_switch':
-        print(s['content'])  # /model command
-" 2>/dev/null)
+    t = (s.get('type') or '').strip()
+    c = (s.get('content') or '')
+    b = base64.b64encode(c.encode('utf-8')).decode('ascii')
+    print(f\"{t}\\t{b}\")
+" 2>/dev/null || true)
 
     if [ -n "$specials" ]; then
-        echo "$specials" | while IFS= read -r cmd; do
-            [ -n "$cmd" ] && send_cli_command "$cmd"
+        echo "$specials" | while IFS=$'\t' read -r typ b64; do
+            [ -z "$typ" ] && continue
+
+            content=""
+            if [ -n "$b64" ]; then
+                content=$(python3 -c "import base64,sys; print(base64.b64decode(sys.argv[1]).decode('utf-8'))" "$b64" 2>/dev/null || echo "")
+            fi
+
+            if [ "$typ" = "clear_command" ]; then
+                if [ "$AGENT_SETTING" = "codex" ]; then
+                    send_cli_command "/new" || true
+                else
+                    send_cli_command "/clear" || true
+                fi
+                [ -n "$content" ] && send_cli_command "$content" || true
+                continue
+            fi
+
+            if [ "$typ" = "model_switch" ]; then
+                if [ "$AGENT_SETTING" = "codex" ]; then
+                    send_model_switch_codex "$content" || true
+                else
+                    [ -n "$content" ] && send_cli_command "$content" || true
+                fi
+                continue
+            fi
         done
     fi
 

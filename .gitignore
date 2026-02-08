@@ -26,6 +26,7 @@
 !instructions/shogun.md
 !instructions/karo.md
 !instructions/ashigaru.md
+!instructions/codex-*.md
 
 # Startup script
 !shutsujin_departure.sh
