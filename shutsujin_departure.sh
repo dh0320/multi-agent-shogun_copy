@@ -453,7 +453,7 @@ fi
 
 # 将軍ペインはウィンドウ名 "main" で指定（base-index 1 環境でも動く）
 SHOGUN_PROMPT=$(generate_prompt "将軍" "magenta" "$SHELL_SETTING")
-tmux send-keys -t shogun:main "cd \"$(pwd)\" && export PS1='${SHOGUN_PROMPT}' && clear" Enter
+tmux send-keys -t shogun:main "cd \"$(pwd)\" && source ~/.bashrc && export PS1='${SHOGUN_PROMPT}' && clear" Enter
 tmux select-pane -t shogun:main -P 'bg=#002b36'  # 将軍の Solarized Dark
 tmux set-option -p -t shogun:main @agent_id "shogun"
 
@@ -518,7 +518,7 @@ PANE_LABELS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" 
 if [ "$KESSEN_MODE" = true ]; then
     PANE_TITLES=("Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus")
 else
-    PANE_TITLES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Opus" "Opus" "Opus" "Opus")
+    PANE_TITLES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet")
 fi
 # 色設定（karo: 赤, ashigaru: 青）
 PANE_COLORS=("red" "blue" "blue" "blue" "blue" "blue" "blue" "blue" "blue")
@@ -530,7 +530,7 @@ AGENT_IDS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "a
 if [ "$KESSEN_MODE" = true ]; then
     MODEL_NAMES=("Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus")
 else
-    MODEL_NAMES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Opus" "Opus" "Opus" "Opus")
+    MODEL_NAMES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Sonnet")
 fi
 
 # CLI Adapter経由でモデル名を動的に上書き
@@ -564,7 +564,7 @@ for i in {0..8}; do
     tmux set-option -p -t "multiagent:agents.${p}" @model_name "${MODEL_NAMES[$i]}"
     tmux set-option -p -t "multiagent:agents.${p}" @current_task ""
     PROMPT_STR=$(generate_prompt "${PANE_LABELS[$i]}" "${PANE_COLORS[$i]}" "$SHELL_SETTING")
-    tmux send-keys -t "multiagent:agents.${p}" "cd \"$(pwd)\" && export PS1='${PROMPT_STR}' && clear" Enter
+    tmux send-keys -t "multiagent:agents.${p}" "cd \"$(pwd)\" && source ~/.bashrc && export PS1='${PROMPT_STR}' && clear" Enter
 done
 
 # pane-border-format でモデル名を常時表示
@@ -799,6 +799,26 @@ NINJA_EOF
     done
 
     log_success "  └─ 10エージェント分のinbox_watcher起動完了"
+
+    # ═══════════════════════════════════════════════════════════════════
+    # STEP 6.6.5: ashigaru1停止監視スクリプト起動
+    # ═══════════════════════════════════════════════════════════════════
+    log_info "👁️  足軽1停止監視スクリプト起動中..."
+
+    # 既存のmonitorプロセスをkill
+    if [ -f "$SCRIPT_DIR/scripts/ashigaru_monitor.pid" ]; then
+        OLD_PID=$(cat "$SCRIPT_DIR/scripts/ashigaru_monitor.pid" 2>/dev/null || echo "")
+        if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+            kill "$OLD_PID" 2>/dev/null || true
+            log_info "  └─ 既存のmonitorプロセス($OLD_PID)を停止"
+        fi
+    fi
+
+    # ashigaru_monitor.shをバックグラウンド起動
+    nohup bash "$SCRIPT_DIR/scripts/ashigaru_monitor.sh" \
+        >> "$SCRIPT_DIR/logs/ashigaru_monitor.log" 2>&1 &
+    disown
+    log_success "  └─ ashigaru_monitor.sh起動完了"
 
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
     # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。

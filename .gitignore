@@ -9,6 +9,23 @@
 # Step 2: ディレクトリの探索を許可（中身は個別に許可）
 !*/
 
+# Step 2.5: ローカル専用ディレクトリを再除外
+config/
+config/services/
+node_modules/
+skills/code-pattern-analyzer/
+skills/mcp-config-validator/
+skills/mcp-env-checker/
+skills/mcp-server-evaluator/
+skills/mcp-server-health-checker/
+skills/project-scaffolder/
+skills/record-management-auditor/
+skills/taskchute-mcp-integration/
+skills/taskchute-status-reader/
+skills/tcc-session-manager/
+skills/test-strategy-supervisor/
+skills/web-tech-stack-analyzer/
+
 # Step 3: OSS公開対象ファイルを許可
 !.gitignore
 !.gitattributes
@@ -84,6 +101,7 @@
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
+!scripts/ashigaru_monitor.sh
 
 
 # SayTask (sample template only, not actual data)
