@@ -434,7 +434,21 @@ agent_is_busy() {
     # - 取得行数を増やし過ぎると誤判定が増えるので、基本は直近の行だけを見る。
     pane_content=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p -S -60 2>/dev/null | tail -60)
 
-    # Most reliable marker across TUIs while the model is actively streaming.
+    # ── Idle prompt detection (early return) ──
+    # Claude Code shows ❯ prompt when idle. This is the definitive idle signal.
+    # Check last 5 non-empty lines — if ❯ is found, agent is idle regardless of
+    # scrollback content (which may contain stale "esc to interrupt", "thought for", etc).
+    local last_lines
+    last_lines=$(echo "$pane_content" | grep -v '^[[:space:]]*$' | tail -5)
+    if echo "$last_lines" | grep -q '^❯'; then
+        return 1  # idle — Claude Code prompt visible
+    fi
+
+    # ── Busy detection (only reached when no idle prompt found) ──
+
+    # Claude Code status bar shows "esc to interrupt" during active streaming.
+    # NOTE: This text also appears in the idle status bar, but we already returned
+    # idle above if ❯ prompt was found. So this only fires during actual streaming.
     if echo "$pane_content" | grep -qiF 'esc to interrupt'; then
         return 0  # busy
     fi
@@ -445,7 +459,11 @@ agent_is_busy() {
     fi
 
     # Minimal fallbacks (no spinner dependency).
-    if echo "$pane_content" | grep -qiE '(Working|Thinking|Planning|Sending|task is in progress|Compacting conversation|thought for|思考中|考え中|計画中|送信中|処理中|実行中)'; then
+    # Only check last 10 lines to avoid scrollback contamination from previous output
+    # (e.g. "thought for 3s" summary from a completed response).
+    local recent_lines
+    recent_lines=$(echo "$pane_content" | tail -10)
+    if echo "$recent_lines" | grep -qiE '(Working|Thinking|Planning|Sending|task is in progress|Compacting conversation|thought for|思考中|考え中|計画中|送信中|処理中|実行中)'; then
         return 0  # busy
     fi
     return 1  # idle
@@ -489,12 +507,12 @@ send_wakeup() {
         return 0
     fi
 
-    # Shogun: if the pane is focused, never inject keys (it can clobber the Lord's input).
-    # Instead, show a tmux message. If not focused, we can safely send the normal nudge.
+    # Shogun: inject nudge even when pane is active.
+    # ntfy messages come from Lord's phone → Lord is not typing at terminal.
+    # Display-message is also shown as visual indicator.
     if [ "$AGENT_ID" = "shogun" ] && pane_is_active; then
-        echo "[$(date)] [DISPLAY] shogun pane is active — showing nudge: inbox${unread_count}" >&2
-        timeout 2 tmux display-message -t "$PANE_TARGET" -d 5000 "inbox${unread_count}" 2>/dev/null || true
-        return 0
+        echo "[$(date)] [NUDGE] shogun pane active — injecting nudge + display: inbox${unread_count}" >&2
+        timeout 2 tmux display-message -t "$PANE_TARGET" -d 3000 "📱 ntfy受信あり (inbox${unread_count})" 2>/dev/null || true
     fi
 
     # 優先度3: tmux send-keys（テキストとEnterを分離 — Codex TUI対策）
