@@ -26,6 +26,26 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
+# 足軽人数設定を読み取り（デフォルト: 8、範囲: 1-8）
+ASHIGARU_COUNT=8
+if [ -f "./config/settings.yaml" ]; then
+    # awkで読み取り、改行や空白を削除、数値のみ抽出
+    ASHIGARU_COUNT=$(grep "^ashigaru_count:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' | tr -d '\n\r ' || echo "8")
+    # 空の場合はデフォルト値
+    if [ -z "$ASHIGARU_COUNT" ]; then
+        ASHIGARU_COUNT=8
+    fi
+    # 数値チェック（正規表現で数値のみか確認）
+    if ! [[ "$ASHIGARU_COUNT" =~ ^[0-9]+$ ]]; then
+        echo "警告: ashigaru_count は数値で指定してください（指定値: '$ASHIGARU_COUNT'）。デフォルト8を使用します。"
+        ASHIGARU_COUNT=8
+    # 範囲チェック（1-8）
+    elif [ "$ASHIGARU_COUNT" -lt 1 ] || [ "$ASHIGARU_COUNT" -gt 8 ]; then
+        echo "警告: ashigaru_count は1〜8の範囲で指定してください（指定値: $ASHIGARU_COUNT）。デフォルト8を使用します。"
+        ASHIGARU_COUNT=8
+    fi
+fi
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -135,12 +155,15 @@ while [[ $# -gt 0 ]]; do
             echo "モデル構成:"
             echo "  将軍:      Opus（thinking無効）"
             echo "  家老:      Opus Thinking"
-            echo "  足軽1-4:   Sonnet Thinking"
-            echo "  足軽5-8:   Opus Thinking"
+            echo "  足軽1-4:   Sonnet Thinking（足軽が4名以下の場合は全員Sonnet）"
+            echo "  足軽5-N:   Opus Thinking（5名以上配備時のみ）"
             echo ""
             echo "陣形:"
-            echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet Thinking, 足軽5-8=Opus Thinking"
+            echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet Thinking, 足軽5-N=Opus Thinking"
             echo "  決戦の陣（--kessen）:   全足軽=Opus Thinking"
+            echo ""
+            echo "足軽人数設定:"
+            echo "  config/settings.yaml の ashigaru_count で1-8名を指定可能（デフォルト: 8）"
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
@@ -193,24 +216,40 @@ show_battle_cry() {
     echo ""
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 足軽隊列（オリジナル）
+    # 足軽隊列（動的生成: $ASHIGARU_COUNT に応じて変化）
     # ═══════════════════════════════════════════════════════════════════════════
     echo -e "\033[1;34m  ╔═════════════════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[1;34m  ║\033[0m                    \033[1;37m【 足 軽 隊 列 ・ 八 名 配 備 】\033[0m                      \033[1;34m║\033[0m"
+    echo -e "\033[1;34m  ║\033[0m                    \033[1;37m【 足 軽 隊 列 ・ ${ASHIGARU_COUNT} 名 配 備 】\033[0m                      \033[1;34m║\033[0m"
     echo -e "\033[1;34m  ╚═════════════════════════════════════════════════════════════════════════════╝\033[0m"
+    echo ""
 
-    cat << 'ASHIGARU_EOF'
-
-       /\      /\      /\      /\      /\      /\      /\      /\
-      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
-     /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\   /_||\
-       ||      ||      ||      ||      ||      ||      ||      ||
-      /||\    /||\    /||\    /||\    /||\    /||\    /||\    /||\
-      /  \    /  \    /  \    /  \    /  \    /  \    /  \    /  \
-     [足1]   [足2]   [足3]   [足4]   [足5]   [足6]   [足7]   [足8]
-
-ASHIGARU_EOF
-
+    # 足軽のASCIIアートを動的生成
+    LINE1="       "
+    LINE2="      "
+    LINE3="     "
+    LINE4="       "
+    LINE5="      "
+    LINE6="      "
+    LINE7="     "
+    
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
+        LINE1+="/\\      "
+        LINE2+="/||\\    "
+        LINE3+="/_||\\   "
+        LINE4+="||      "
+        LINE5+="/||\\    "
+        LINE6+="/  \\    "
+        LINE7+="[足$i]   "
+    done
+    
+    echo "$LINE1"
+    echo "$LINE2"
+    echo "$LINE3"
+    echo "$LINE4"
+    echo "$LINE5"
+    echo "$LINE6"
+    echo "$LINE7"
+    echo ""
     echo -e "                    \033[1;36m「「「 はっ！！ 出陣いたす！！ 」」」\033[0m"
     echo ""
 
@@ -220,7 +259,7 @@ ASHIGARU_EOF
     echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
     echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m戦国マルチエージェント統率システム\033[0m 〜           \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×8      \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×${ASHIGARU_COUNT}      \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
     echo ""
 }
@@ -272,8 +311,8 @@ fi
 if [ "$CLEAN_MODE" = true ]; then
     log_info "📜 前回の軍議記録を破棄中..."
 
-    # 足軽タスクファイルリセット
-    for i in {1..8}; do
+    # 足軽タスクファイルリセット（動的に$ASHIGARU_COUNT分生成）
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
         cat > ./queue/tasks/ashigaru${i}.yaml << EOF
 # 足軽${i}専用タスクファイル
 task:
@@ -286,8 +325,8 @@ task:
 EOF
     done
 
-    # 足軽レポートファイルリセット
-    for i in {1..8}; do
+    # 足軽レポートファイルリセット（動的に$ASHIGARU_COUNT分生成）
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
         cat > ./queue/reports/ashigaru${i}_report.yaml << EOF
 worker_id: ashigaru${i}
 task_id: null
@@ -302,49 +341,17 @@ EOF
 queue: []
 EOF
 
-    cat > ./queue/karo_to_ashigaru.yaml << 'EOF'
-assignments:
-  ashigaru1:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru2:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru3:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru4:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru5:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru6:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru7:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-  ashigaru8:
-    task_id: null
-    description: null
-    target_path: null
-    status: idle
-EOF
+    # karo_to_ashigaru.yaml を動的生成（$ASHIGARU_COUNT分のエントリー）
+    {
+        echo "assignments:"
+        for ((i=1; i<=ASHIGARU_COUNT; i++)); do
+            echo "  ashigaru${i}:"
+            echo "    task_id: null"
+            echo "    description: null"
+            echo "    target_path: null"
+            echo "    status: idle"
+        done
+    } > ./queue/karo_to_ashigaru.yaml
 
     log_success "✅ 陣払い完了"
 else
@@ -464,9 +471,10 @@ echo ""
 PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5.1: multiagent セッション作成（9ペイン：karo + ashigaru1-8）
+# STEP 5.1: multiagent セッション作成（動的ペイン数：karo + ashigaru1-N）
 # ═══════════════════════════════════════════════════════════════════════════════
-log_war "⚔️ 家老・足軽の陣を構築中（9名配備）..."
+TOTAL_PANES=$((ASHIGARU_COUNT + 1))  # 家老 + 足軽N名
+log_war "⚔️ 家老・足軽の陣を構築中（${TOTAL_PANES}名配備：家老1 + 足軽${ASHIGARU_COUNT}）..."
 
 # 最初のペイン作成
 if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
@@ -485,46 +493,64 @@ if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
     exit 1
 fi
 
-# 3x3グリッド作成（合計9ペイン）
-# ペイン番号は pane-base-index に依存（0 または 1）
-# 最初に3列に分割
-tmux split-window -h -t "multiagent:agents"
-tmux split-window -h -t "multiagent:agents"
+# 動的にグリッドを構築（3列で配置）
+# 必要な列数と行数を計算
+COLS=3
+ROWS=$(( (TOTAL_PANES + COLS - 1) / COLS ))
 
-# 各列を3行に分割
-tmux select-pane -t "multiagent:agents.${PANE_BASE}"
-tmux split-window -v
-tmux split-window -v
+# まず横3列に分割（COLS-1回分割）
+for ((c=1; c<COLS; c++)); do
+    tmux split-window -h -t "multiagent:agents"
+done
 
-tmux select-pane -t "multiagent:agents.$((PANE_BASE+3))"
-tmux split-window -v
-tmux split-window -v
+# 各列を縦に分割
+for ((c=0; c<COLS; c++)); do
+    # この列に配置するペイン数を計算
+    panes_in_col=$(( (TOTAL_PANES - c + COLS - 1) / COLS ))
+    if [ $panes_in_col -gt 1 ]; then
+        tmux select-pane -t "multiagent:agents.$((PANE_BASE + c * ROWS))"
+        for ((r=1; r<panes_in_col; r++)); do
+            tmux split-window -v
+        done
+    fi
+done
 
-tmux select-pane -t "multiagent:agents.$((PANE_BASE+6))"
-tmux split-window -v
-tmux split-window -v
+# ペイン設定配列を動的生成
+PANE_LABELS=("karo")
+PANE_COLORS=("red")
+AGENT_IDS=("karo")
 
-# ペインラベル設定（プロンプト用: モデル名なし）
-PANE_LABELS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
-# ペインタイトル設定（tmuxタイトル用: モデル名付き）
+for ((i=1; i<=ASHIGARU_COUNT; i++)); do
+    PANE_LABELS+=("ashigaru${i}")
+    PANE_COLORS+=("blue")
+    AGENT_IDS+=("ashigaru${i}")
+done
+
+# ペインタイトルとモデル名設定
+PANE_TITLES=("karo(Opus)")
+MODEL_NAMES=("Opus Thinking")
+
 if [ "$KESSEN_MODE" = true ]; then
-    PANE_TITLES=("karo(Opus)" "ashigaru1(Opus)" "ashigaru2(Opus)" "ashigaru3(Opus)" "ashigaru4(Opus)" "ashigaru5(Opus)" "ashigaru6(Opus)" "ashigaru7(Opus)" "ashigaru8(Opus)")
+    # 決戦モード: 全足軽Opus
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
+        PANE_TITLES+=("ashigaru${i}(Opus)")
+        MODEL_NAMES+=("Opus Thinking")
+    done
 else
-    PANE_TITLES=("karo(Opus)" "ashigaru1(Sonnet)" "ashigaru2(Sonnet)" "ashigaru3(Sonnet)" "ashigaru4(Sonnet)" "ashigaru5(Opus)" "ashigaru6(Opus)" "ashigaru7(Opus)" "ashigaru8(Opus)")
-fi
-# 色設定（karo: 赤, ashigaru: 青）
-PANE_COLORS=("red" "blue" "blue" "blue" "blue" "blue" "blue" "blue" "blue")
-
-AGENT_IDS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
-
-# モデル名設定（pane-border-format で常時表示するため）
-if [ "$KESSEN_MODE" = true ]; then
-    MODEL_NAMES=("Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking")
-else
-    MODEL_NAMES=("Opus Thinking" "Sonnet Thinking" "Sonnet Thinking" "Sonnet Thinking" "Sonnet Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking" "Opus Thinking")
+    # 平時モード: 足軽1-4=Sonnet, 足軽5-8=Opus
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
+        if [ $i -le 4 ]; then
+            PANE_TITLES+=("ashigaru${i}(Sonnet)")
+            MODEL_NAMES+=("Sonnet Thinking")
+        else
+            PANE_TITLES+=("ashigaru${i}(Opus)")
+            MODEL_NAMES+=("Opus Thinking")
+        fi
+    done
 fi
 
-for i in {0..8}; do
+# 各ペインにプロンプト設定
+for ((i=0; i<TOTAL_PANES; i++)); do
     p=$((PANE_BASE + i))
     tmux select-pane -t "multiagent:agents.${p}" -T "${PANE_TITLES[$i]}"
     tmux set-option -p -t "multiagent:agents.${p}" @agent_id "${AGENT_IDS[$i]}"
@@ -570,27 +596,32 @@ if [ "$SETUP_ONLY" = false ]; then
 
     if [ "$KESSEN_MODE" = true ]; then
         # 決戦の陣: 全足軽 Opus Thinking
-        for i in {1..8}; do
+        for ((i=1; i<=ASHIGARU_COUNT; i++)); do
             p=$((PANE_BASE + i))
             tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
             tmux send-keys -t "multiagent:agents.${p}" Enter
         done
-        log_info "  └─ 足軽1-8（Opus Thinking）、決戦の陣で召喚完了"
+        log_info "  └─ 足軽1-${ASHIGARU_COUNT}（Opus Thinking）、決戦の陣で召喚完了"
     else
-        # 平時の陣: 足軽1-4=Sonnet, 足軽5-8=Opus
-        for i in {1..4}; do
+        # 平時の陣: 足軽1-4=Sonnet, 足軽5-N=Opus
+        sonnet_count=$((ASHIGARU_COUNT < 4 ? ASHIGARU_COUNT : 4))
+        for ((i=1; i<=sonnet_count; i++)); do
             p=$((PANE_BASE + i))
             tmux send-keys -t "multiagent:agents.${p}" "claude --model sonnet --dangerously-skip-permissions"
             tmux send-keys -t "multiagent:agents.${p}" Enter
         done
-        log_info "  └─ 足軽1-4（Sonnet Thinking）、召喚完了"
+        if [ $sonnet_count -gt 0 ]; then
+            log_info "  └─ 足軽1-${sonnet_count}（Sonnet Thinking）、召喚完了"
+        fi
 
-        for i in {5..8}; do
-            p=$((PANE_BASE + i))
-            tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
-            tmux send-keys -t "multiagent:agents.${p}" Enter
-        done
-        log_info "  └─ 足軽5-8（Opus Thinking）、召喚完了"
+        if [ $ASHIGARU_COUNT -gt 4 ]; then
+            for ((i=5; i<=ASHIGARU_COUNT; i++)); do
+                p=$((PANE_BASE + i))
+                tmux send-keys -t "multiagent:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+                tmux send-keys -t "multiagent:agents.${p}" Enter
+            done
+            log_info "  └─ 足軽5-${ASHIGARU_COUNT}（Opus Thinking）、召喚完了"
+        fi
     fi
 
     if [ "$KESSEN_MODE" = true ]; then
@@ -630,10 +661,10 @@ if [ "$SETUP_ONLY" = false ]; then
     sleep 0.5
     tmux send-keys -t "multiagent:agents.${PANE_BASE}" Enter
 
-    # 足軽に指示書を読み込ませる（1-8）
+    # 足軽に指示書を読み込ませる（動的に$ASHIGARU_COUNT分）
     sleep 2
     log_info "  └─ 足軽に指示書を伝達中..."
-    for i in {1..8}; do
+    for ((i=1; i<=ASHIGARU_COUNT; i++)); do
         p=$((PANE_BASE + i))
         tmux send-keys -t "multiagent:agents.${p}" "instructions/ashigaru.md を読んで役割を理解せよ。汝は足軽${i}号である。"
         sleep 0.3
@@ -663,19 +694,10 @@ echo "     【shogunセッション】将軍の本陣"
 echo "     ┌─────────────────────────────┐"
 echo "     │  Pane 0: 将軍 (SHOGUN)      │  ← 総大将・プロジェクト統括"
 echo "     └─────────────────────────────┘"
-echo ""
-echo "     【multiagentセッション】家老・足軽の陣（3x3 = 9ペイン）"
-echo "     ┌─────────┬─────────┬─────────┐"
-echo "     │  karo   │ashigaru3│ashigaru6│"
-echo "     │  (家老) │ (足軽3) │ (足軽6) │"
-echo "     ├─────────┼─────────┼─────────┤"
-echo "     │ashigaru1│ashigaru4│ashigaru7│"
-echo "     │ (足軽1) │ (足軽4) │ (足軽7) │"
-echo "     ├─────────┼─────────┼─────────┤"
-echo "     │ashigaru2│ashigaru5│ashigaru8│"
-echo "     │ (足軽2) │ (足軽5) │ (足軽8) │"
-echo "     └─────────┴─────────┴─────────┘"
-echo ""
+    echo ""
+    echo "     【multiagentセッション】家老・足軽の陣（${TOTAL_PANES}ペイン：家老1 + 足軽${ASHIGARU_COUNT}）"
+    echo "     ※ 3列グリッド配置"
+    echo ""
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════════════╗"
@@ -693,7 +715,7 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  │    'claude --dangerously-skip-permissions' Enter         │"
     echo "  │                                                          │"
     echo "  │  # 家老・足軽を一斉召喚                                  │"
-    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do                                 │"
+    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+TOTAL_PANES-1))); do │"
     echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
     echo "  │      'claude --dangerously-skip-permissions' Enter       │"
     echo "  │  done                                                    │"
