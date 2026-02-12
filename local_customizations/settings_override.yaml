@@ -1,5 +1,7 @@
 # ローカル環境専用の設定上書き
 # この内容は config/settings.yaml にマージされます
 
-# 足軽人数設定（1〜8名、デフォルト8）
-ashigaru_count: 4
+# カスタマイズ項目がある場合はここに追記
+# 例:
+# language: ja
+# shell: bash

@@ -59,7 +59,7 @@ git commit -m "Merge upstream main (theirs strategy)"
 
 これにより以下が再適用されます：
 
-- `config/settings.yaml` の `ashigaru_count` 設定
+- `config/settings.yaml` のカスタマイズ設定（あれば）
 - `.git/hooks/pre-push` フック（git push禁止）
 - `Makefile` の拡張コマンド
 
@@ -68,9 +68,6 @@ git commit -m "Merge upstream main (theirs strategy)"
 ```bash
 # セッション状態確認
 make status
-
-# 設定確認
-grep ashigaru_count config/settings.yaml
 
 # pre-push フック確認
 ls -la .git/hooks/pre-push
@@ -94,7 +91,7 @@ git commit -m "Re-apply local customizations after upstream merge"
 3. 変更をコミット
 
 ```bash
-# 例: 足軽人数を変更
+# 例: 言語設定を変更
 vim local_customizations/settings_override.yaml
 
 # 適用
@@ -102,15 +99,12 @@ vim local_customizations/settings_override.yaml
 
 # コミット
 git add local_customizations/
-git commit -m "Update ashigaru_count to 6"
+git commit -m "Update language setting"
 ```
 
 ### カスタマイズが適用されているか確認
 
 ```bash
-# ashigaru_count の確認
-grep ashigaru_count config/settings.yaml
-
 # Makefileコマンドの確認
 make help | grep -A3 "ローカルカスタマイズ"
 
@@ -144,7 +138,7 @@ git add path/to/file
 
 1. **config/settings.yaml**:
    ```bash
-   # ashigaru_count: 4 を手動で追記
+   # カスタマイズ設定を手動で追記（あれば）
    vim config/settings.yaml
    ```
 

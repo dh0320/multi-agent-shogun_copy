@@ -30,15 +30,11 @@ local_customizations/
 
 ## カスタマイズ内容
 
-### 1. 足軽人数設定
-- `settings_override.yaml` で `ashigaru_count` を指定
-- デフォルト: 4名
-
-### 2. git push 禁止フック
+### 1. git push 禁止フック
 - `hooks/pre-push` でリモートへのpushをブロック
 - 殿の許可なくpushできないようにする
 
-### 3. Makefile 拡張
+### 2. Makefile 拡張
 - 操作コマンドを追加（setup, shutsujin, stop, status, attach-*）
 
 ## 同期手順

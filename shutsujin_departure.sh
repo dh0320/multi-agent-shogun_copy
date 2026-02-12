@@ -26,26 +26,6 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
-# 足軽人数設定を読み取り（デフォルト: 8、範囲: 1-8）
-ASHIGARU_COUNT=8
-if [ -f "./config/settings.yaml" ]; then
-    # awkで読み取り、改行や空白を削除、数値のみ抽出
-    ASHIGARU_COUNT=$(grep "^ashigaru_count:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' | tr -d '\n\r ' || echo "8")
-    # 空の場合はデフォルト値
-    if [ -z "$ASHIGARU_COUNT" ]; then
-        ASHIGARU_COUNT=8
-    fi
-    # 数値チェック（正規表現で数値のみか確認）
-    if ! [[ "$ASHIGARU_COUNT" =~ ^[0-9]+$ ]]; then
-        echo "警告: ashigaru_count は数値で指定してください（指定値: '$ASHIGARU_COUNT'）。デフォルト8を使用します。"
-        ASHIGARU_COUNT=8
-    # 範囲チェック（1-8）
-    elif [ "$ASHIGARU_COUNT" -lt 1 ] || [ "$ASHIGARU_COUNT" -gt 8 ]; then
-        echo "警告: ashigaru_count は1〜8の範囲で指定してください（指定値: $ASHIGARU_COUNT）。デフォルト8を使用します。"
-        ASHIGARU_COUNT=8
-    fi
-fi
-
 # CLI Adapter読み込み（Multi-CLI Support）
 if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
     source "$SCRIPT_DIR/lib/cli_adapter.sh"
@@ -334,7 +314,7 @@ if [ "$CLEAN_MODE" = true ]; then
     log_info "📜 前回の軍議記録を破棄中..."
 
     # 足軽タスクファイルリセット
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
+    for i in {1..8}; do
         cat > ./queue/tasks/ashigaru${i}.yaml << EOF
 # 足軽${i}専用タスクファイル
 task:
@@ -348,7 +328,7 @@ EOF
     done
 
     # 足軽レポートファイルリセット
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
+    for i in {1..8}; do
         cat > ./queue/reports/ashigaru${i}_report.yaml << EOF
 worker_id: ashigaru${i}
 task_id: null
@@ -513,92 +493,49 @@ else
     tmux set-environment -t multiagent DISPLAY_MODE "shout"
 fi
 
-# 動的グリッド作成（家老1 + 足軽N）
+# 3x3グリッド作成（合計9ペイン）
 # ペイン番号は pane-base-index に依存（0 または 1）
-TOTAL_PANES=$((1 + ASHIGARU_COUNT))  # 家老1 + 足軽N
+# 最初に3列に分割
+tmux split-window -h -t "multiagent:agents"
+tmux split-window -h -t "multiagent:agents"
 
-# レイアウト計算（列数を決定）
-if [ "$TOTAL_PANES" -le 3 ]; then
-    COLS=1
-elif [ "$TOTAL_PANES" -le 6 ]; then
-    COLS=2
-else
-    COLS=3
-fi
+# 各列を3行に分割
+tmux select-pane -t "multiagent:agents.${PANE_BASE}"
+tmux split-window -v
+tmux split-window -v
 
-# ペイン作成（最初に横分割で列を作り、次に縦分割で行を作る）
-for ((col=1; col<COLS; col++)); do
-    tmux split-window -h -t "multiagent:agents"
-done
+tmux select-pane -t "multiagent:agents.$((PANE_BASE+3))"
+tmux split-window -v
+tmux split-window -v
 
-# 各列に必要な行数を計算して縦分割
-PANES_PER_COL=$(( (TOTAL_PANES + COLS - 1) / COLS ))
-for ((col=0; col<COLS; col++)); do
-    pane_in_col=$(( TOTAL_PANES - col * PANES_PER_COL ))
-    if [ "$pane_in_col" -gt "$PANES_PER_COL" ]; then
-        pane_in_col=$PANES_PER_COL
-    fi
-    
-    # この列に必要な行数だけ分割（最初のペインは既にあるので -1）
-    for ((row=1; row<pane_in_col; row++)); do
-        tmux select-pane -t "multiagent:agents.$((PANE_BASE + col * PANES_PER_COL))"
-        tmux split-window -v
-    done
-done
+tmux select-pane -t "multiagent:agents.$((PANE_BASE+6))"
+tmux split-window -v
+tmux split-window -v
 
 # ペインラベル設定（プロンプト用: モデル名なし）
-PANE_LABELS=("karo")
-for i in $(seq 1 "$ASHIGARU_COUNT"); do
-    PANE_LABELS+=("ashigaru${i}")
-done
+PANE_LABELS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
 # ペインタイトル設定（tmuxタイトル用: モデル名付き）
-PANE_TITLES=("Opus")  # 家老
 if [ "$KESSEN_MODE" = true ]; then
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
-        PANE_TITLES+=("Opus")
-    done
+    PANE_TITLES=("Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus")
 else
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
-        if [ "$i" -le 4 ]; then
-            PANE_TITLES+=("Sonnet")
-        else
-            PANE_TITLES+=("Opus")
-        fi
-    done
+    PANE_TITLES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Opus" "Opus" "Opus" "Opus")
 fi
-
 # 色設定（karo: 赤, ashigaru: 青）
-PANE_COLORS=("red")  # 家老
-for i in $(seq 1 "$ASHIGARU_COUNT"); do
-    PANE_COLORS+=("blue")
-done
+PANE_COLORS=("red" "blue" "blue" "blue" "blue" "blue" "blue" "blue" "blue")
 
-# エージェントID設定
-AGENT_IDS=("karo")
-for i in $(seq 1 "$ASHIGARU_COUNT"); do
-    AGENT_IDS+=("ashigaru${i}")
-done
+AGENT_IDS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
 
 # モデル名設定（pane-border-format で常時表示するため）
 # デフォルト（Claude用）
-MODEL_NAMES=("Opus")  # 家老
 if [ "$KESSEN_MODE" = true ]; then
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
-        MODEL_NAMES+=("Opus")
-    done
+    MODEL_NAMES=("Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus")
 else
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
-        if [ "$i" -le 4 ]; then
-            MODEL_NAMES+=("Sonnet")
-        else
-            MODEL_NAMES+=("Opus")
-        fi
-    done
+    MODEL_NAMES=("Opus" "Sonnet" "Sonnet" "Sonnet" "Sonnet" "Opus" "Opus" "Opus" "Opus")
 fi
 
 # CLI Adapter経由でモデル名を動的に上書き
 if [ "$CLI_ADAPTER_LOADED" = true ]; then
-    for i in $(seq 0 "$ASHIGARU_COUNT"); do
+    for i in {0..8}; do
         _agent="${AGENT_IDS[$i]}"
         _cli=$(get_cli_type "$_agent")
         case "$_cli" in
@@ -618,7 +555,7 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
     done
 fi
 
-for i in $(seq 0 "$ASHIGARU_COUNT"); do
+for i in {0..8}; do
     p=$((PANE_BASE + i))
     tmux select-pane -t "multiagent:agents.${p}" -T "${MODEL_NAMES[$i]}"
     tmux set-option -p -t "multiagent:agents.${p}" @agent_id "${AGENT_IDS[$i]}"
@@ -692,7 +629,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
     if [ "$KESSEN_MODE" = true ]; then
         # 決戦の陣: CLI Adapter経由（claudeはOpus強制）
-        for i in $(seq 1 "$ASHIGARU_COUNT"); do
+        for i in {1..8}; do
             p=$((PANE_BASE + i))
             _ashi_cli_type="claude"
             _ashi_cmd="claude --model opus --dangerously-skip-permissions"
@@ -712,7 +649,7 @@ if [ "$SETUP_ONLY" = false ]; then
         log_info "  └─ 足軽1-8（決戦の陣）、召喚完了"
     else
         # 平時の陣: CLI Adapter経由（デフォルト: 1-4=Sonnet, 5-8=Opus）
-        for i in $(seq 1 "$ASHIGARU_COUNT"); do
+        for i in {1..8}; do
             p=$((PANE_BASE + i))
             _ashi_cli_type="claude"
             if [ $i -le 4 ]; then
@@ -851,7 +788,7 @@ NINJA_EOF
     disown
 
     # 足軽のwatcher
-    for i in $(seq 1 "$ASHIGARU_COUNT"); do
+    for i in {1..8}; do
         p=$((PANE_BASE + i))
         _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "ashigaru${i}" "multiagent:agents.${p}" "$_ashi_watcher_cli" \
