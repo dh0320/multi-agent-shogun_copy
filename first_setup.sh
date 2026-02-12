@@ -514,6 +514,28 @@ skill:
 logging:
   level: info  # debug | info | warn | error
   path: "$SCRIPT_DIR/logs/"
+
+# CLI設定（任意）
+# type: claude | codex | copilot | kimi
+# model: CLI起動時のモデル指定（対応CLIのみ）
+# effort: 推論effort（Claude: low/medium/high, Codex: low/medium/high/xhigh など）
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: opus
+    karo:
+      type: claude
+      model: opus
+    ashigaru5:
+      type: codex
+      model: gpt-5.3-codex
+      effort: high
+
+# effortをエージェントごとに共通指定したい場合（cli.agents.*.effort より優先度は低い）
+efforts:
+  ashigaru6: medium
 EOF
     log_success "settings.yaml を作成しました"
 else

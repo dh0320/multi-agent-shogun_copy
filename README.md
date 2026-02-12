@@ -1126,6 +1126,32 @@ language: ja   # Samurai Japanese only
 language: en   # Samurai Japanese + English translation
 ```
 
+### Per-Agent CLI / Model / Effort
+
+```yaml
+# config/settings.yaml
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: opus
+    ashigaru5:
+      type: codex
+      model: gpt-5.3-codex
+      effort: xhigh
+
+# Optional fallback map for Codex reasoning effort
+efforts:
+  ashigaru6: high
+```
+
+- `model` is applied at launch for supported CLIs (Claude/Codex/Kimi).
+- `effort` is applied as:
+  - Claude: `--effort <low|medium|high>`
+  - Codex: `-c model_reasoning_effort="..."`
+- If both are set, `cli.agents.<id>.effort` takes precedence over `efforts.<id>`.
+
 ### Screenshot integration
 
 ```yaml

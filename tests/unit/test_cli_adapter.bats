@@ -106,6 +106,33 @@ models:
   karo: sonnet
 YAML
 
+    # codex model/effort settings
+    cat > "${TEST_TMP}/settings_codex_tuning.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    ashigaru5:
+      type: codex
+      model: gpt-5.3-codex
+      effort: xhigh
+    ashigaru6:
+      type: codex
+      effort: high
+efforts:
+  karo: max
+YAML
+
+    # claude effort settings
+    cat > "${TEST_TMP}/settings_claude_effort.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: claude-opus-4-6
+      effort: low
+YAML
+
     # kimi CLI settings
     cat > "${TEST_TMP}/settings_kimi.yaml" << 'YAML'
 cli:
@@ -276,10 +303,28 @@ load_adapter_with() {
     [ "$result" = "claude --model opus --dangerously-skip-permissions" ]
 }
 
+@test "build_cli_command: claude + effort → --effort low" {
+    load_adapter_with "${TEST_TMP}/settings_claude_effort.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "claude --model claude-opus-4-6 --effort low --dangerously-skip-permissions" ]
+}
+
 @test "build_cli_command: codex → codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
     [ "$result" = "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: codex + model/effort → --model + -c model_reasoning_effort" {
+    load_adapter_with "${TEST_TMP}/settings_codex_tuning.yaml"
+    result=$(build_cli_command "ashigaru5")
+    [ "$result" = 'codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen --model gpt-5.3-codex -c model_reasoning_effort="xhigh"' ]
+}
+
+@test "build_cli_command: codex + effort only → -c model_reasoning_effort" {
+    load_adapter_with "${TEST_TMP}/settings_codex_tuning.yaml"
+    result=$(build_cli_command "ashigaru6")
+    [ "$result" = 'codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen -c model_reasoning_effort="high"' ]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
@@ -546,4 +591,26 @@ load_adapter_with() {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "k2.5" ]
+}
+
+# =============================================================================
+# get_agent_effort テスト
+# =============================================================================
+
+@test "get_agent_effort: agent override ashigaru5 -> xhigh" {
+    load_adapter_with "${TEST_TMP}/settings_codex_tuning.yaml"
+    result=$(get_agent_effort "ashigaru5")
+    [ "$result" = "xhigh" ]
+}
+
+@test "get_agent_effort: top-level fallback karo -> max" {
+    load_adapter_with "${TEST_TMP}/settings_codex_tuning.yaml"
+    result=$(get_agent_effort "karo")
+    [ "$result" = "max" ]
+}
+
+@test "get_agent_effort: unset ashigaru1 -> empty" {
+    load_adapter_with "${TEST_TMP}/settings_codex_tuning.yaml"
+    result=$(get_agent_effort "ashigaru1")
+    [ -z "$result" ]
 }

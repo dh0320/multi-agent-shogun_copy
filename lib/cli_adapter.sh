@@ -8,6 +8,7 @@
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
 #   get_agent_model(agent_id)               → "opus" | "sonnet" | "haiku" | "k2.5"
+#   get_agent_effort(agent_id)              → "low" | "medium" | "high" | "xhigh" | ""
 
 # プロジェクトルートを基準にsettings.yamlのパスを解決
 CLI_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -61,6 +62,34 @@ _cli_adapter_is_valid_cli() {
         [[ "$cli_type" == "$allowed" ]] && return 0
     done
     return 1
+}
+
+# _cli_adapter_is_safe_token value
+# コマンドライン引数として安全なトークンかを検査
+_cli_adapter_is_safe_token() {
+    local value="$1"
+    [[ "$value" =~ ^[A-Za-z0-9._:-]+$ ]]
+}
+
+# _cli_adapter_get_model_override(agent_id)
+# settings由来の明示モデルのみ取得（デフォルトは返さない）
+_cli_adapter_get_model_override() {
+    local agent_id="$1"
+    local model_from_yaml
+    model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
+    if [[ -n "$model_from_yaml" ]]; then
+        echo "$model_from_yaml"
+        return 0
+    fi
+
+    local model_from_models
+    model_from_models=$(_cli_adapter_read_yaml "models.${agent_id}" "")
+    if [[ -n "$model_from_models" ]]; then
+        echo "$model_from_models"
+        return 0
+    fi
+
+    echo ""
 }
 
 # --- 公開API ---
@@ -127,6 +156,10 @@ build_cli_command() {
     cli_type=$(get_cli_type "$agent_id")
     local model
     model=$(get_agent_model "$agent_id")
+    local model_override
+    model_override=$(_cli_adapter_get_model_override "$agent_id")
+    local effort
+    effort=$(get_agent_effort "$agent_id")
 
     case "$cli_type" in
         claude)
@@ -134,11 +167,36 @@ build_cli_command() {
             if [[ -n "$model" ]]; then
                 cmd="$cmd --model $model"
             fi
+            if [[ -n "$effort" ]]; then
+                case "$effort" in
+                    low|medium|high)
+                        cmd="$cmd --effort $effort"
+                        ;;
+                    *)
+                        echo "[WARN] Invalid Claude effort '$effort' for '$agent_id'. Allowed: low|medium|high. Ignoring." >&2
+                        ;;
+                esac
+            fi
             cmd="$cmd --dangerously-skip-permissions"
             echo "$cmd"
             ;;
         codex)
-            echo "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            local cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            if [[ -n "$model_override" ]]; then
+                if _cli_adapter_is_safe_token "$model_override"; then
+                    cmd="$cmd --model $model_override"
+                else
+                    echo "[WARN] Invalid model token '$model_override' for '$agent_id'. Ignoring." >&2
+                fi
+            fi
+            if [[ -n "$effort" ]]; then
+                if _cli_adapter_is_safe_token "$effort"; then
+                    cmd="$cmd -c model_reasoning_effort=\"$effort\""
+                else
+                    echo "[WARN] Invalid effort token '$effort' for '$agent_id'. Ignoring." >&2
+                fi
+            fi
+            echo "$cmd"
             ;;
         copilot)
             echo "copilot --yolo"
@@ -225,21 +283,11 @@ validate_cli_availability() {
 get_agent_model() {
     local agent_id="$1"
 
-    # まずsettings.yamlのcli.agents.{id}.modelを確認
-    local model_from_yaml
-    model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
-
-    if [[ -n "$model_from_yaml" ]]; then
-        echo "$model_from_yaml"
-        return 0
-    fi
-
-    # 既存のmodelsセクションを確認
-    local model_from_models
-    model_from_models=$(_cli_adapter_read_yaml "models.${agent_id}" "")
-
-    if [[ -n "$model_from_models" ]]; then
-        echo "$model_from_models"
+    # settingsで明示指定されたモデルを優先
+    local model_override
+    model_override=$(_cli_adapter_get_model_override "$agent_id")
+    if [[ -n "$model_override" ]]; then
+        echo "$model_override"
         return 0
     fi
 
@@ -266,4 +314,30 @@ get_agent_model() {
             esac
             ;;
     esac
+}
+
+# get_agent_effort(agent_id)
+# エージェントが使用すべき推論effortを返す（未設定なら空文字）
+get_agent_effort() {
+    local agent_id="$1"
+    if [[ -z "$agent_id" ]]; then
+        echo ""
+        return 0
+    fi
+
+    local effort_from_yaml
+    effort_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.effort" "")
+    if [[ -n "$effort_from_yaml" ]]; then
+        echo "$effort_from_yaml"
+        return 0
+    fi
+
+    local effort_from_efforts
+    effort_from_efforts=$(_cli_adapter_read_yaml "efforts.${agent_id}" "")
+    if [[ -n "$effort_from_efforts" ]]; then
+        echo "$effort_from_efforts"
+        return 0
+    fi
+
+    echo ""
 }

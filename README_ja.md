@@ -1106,6 +1106,29 @@ language: ja   # 日本語のみ
 language: en   # 日本語 + 英訳併記
 ```
 
+### エージェント別 CLI / model / effort 設定
+
+```yaml
+# config/settings.yaml
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: opus
+    ashigaru5:
+      type: codex
+      model: gpt-5.3-codex
+      effort: xhigh
+
+```
+
+- `model` は対応CLI（Claude/Codex/Kimi）で起動時に反映されます。
+- `effort` は以下に反映されます。
+  - Claude: `--effort <low|medium|high>`
+  - Codex: `-c model_reasoning_effort="..."`
+- 両方定義した場合、`cli.agents.<id>.effort` が `efforts.<id>` より優先されます。
+
 ### スクリーンショット連携
 
 ```yaml
