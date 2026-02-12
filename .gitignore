@@ -64,6 +64,11 @@
 # Development tooling
 !Makefile
 
+# Local customizations (for fork sync)
+!local_customizations/
+!local_customizations/**
+!FORK_SYNC.md
+
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
