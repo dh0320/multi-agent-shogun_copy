@@ -538,6 +538,7 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
     for i in {0..8}; do
         _agent="${AGENT_IDS[$i]}"
         _cli=$(get_cli_type "$_agent")
+        _model=$(get_agent_model "$_agent")
         case "$_cli" in
             codex)
                 # config.tomlから推論レベルを取得（表示は短縮形）
@@ -550,6 +551,14 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 ;;
             kimi)
                 MODEL_NAMES[$i]="Kimi"
+                ;;
+            claude)
+                case "$_model" in
+                    opus)   MODEL_NAMES[$i]="Opus" ;;
+                    sonnet) MODEL_NAMES[$i]="Sonnet" ;;
+                    haiku)  MODEL_NAMES[$i]="Haiku" ;;
+                    *)      MODEL_NAMES[$i]="Opus" ;;
+                esac
                 ;;
         esac
     done

@@ -230,6 +230,7 @@ source ~/.bashrc
 # 2. OAuthログイン + Bypass Permissions承認（1コマンドで完了）
 claude --dangerously-skip-permissions
 #    → ブラウザが開く → Anthropicアカウントでログイン → CLIに戻る
+#    → WSLでブラウザが開かない場合は、表示URLをWindows側ブラウザへ貼り付け
 #    → 「Bypass Permissions」の承認画面 → 「Yes, I accept」を選択（↓キーで2を選んでEnter）
 #    → /exit で退出
 ```
@@ -346,19 +347,20 @@ wsl --install
 | スクリプト | 用途 | 実行タイミング |
 |-----------|------|---------------|
 | `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
-| `first_setup.sh` | tmux、Node.js、Claude Code CLI のインストール + Memory MCP設定 | 初回のみ |
-| `shutsujin_departure.sh` | tmuxセッション作成 + Claude Code起動 + 指示書読み込み + ntfyリスナー起動 | 毎日 |
+| `first_setup.sh` | tmux、Node.js、Python依存、Claude Code CLI、Memory MCP、初期化設定 | 初回のみ |
+| `shutsujin_departure.sh` | tmuxセッション作成 + Claude Code起動 + inbox/ntfyリスナー起動 | 毎日 |
 
 ### `install.bat` が自動で行うこと：
-- ✅ WSL2がインストールされているかチェック（未インストールなら案内）
+- ✅ WSL2がインストールされているかチェック（未インストールなら `wsl --install` を実行）
 - ✅ Ubuntuがインストールされているかチェック（未インストールなら案内）
+- ✅ Ubuntuをデフォルトディストリに設定（`wsl --set-default Ubuntu`）
 - ✅ 次のステップ（`first_setup.sh` の実行方法）を案内
 
 ### `shutsujin_departure.sh` が行うこと：
 - ✅ tmuxセッションを作成（shogun + multiagent）
 - ✅ 全エージェントでClaude Codeを起動
-- ✅ 各エージェントに指示書を自動読み込み
-- ✅ キューファイルをリセットして新しい状態に
+- ✅ 各エージェントは起動後、Session Start手順で指示書を自律読み込み
+- ✅ キュー/ダッシュボードのリセットは `-c/--clean` 指定時のみ実行
 - ✅ ntfyリスナーを起動してスマホ通知を有効化（設定済みの場合）
 
 **実行後、全エージェントが即座にコマンドを受け付ける準備完了！**
@@ -377,7 +379,7 @@ wsl --install
 | WSL2 + Ubuntu | PowerShellで `wsl --install` | Windowsのみ |
 | Ubuntuをデフォルトに設定 | `wsl --set-default Ubuntu` | スクリプトの動作に必要 |
 | tmux | `sudo apt install tmux` | ターミナルマルチプレクサ |
-| Node.js v20+ | `nvm install 20` | MCPサーバーに必要 |
+| Node.js v18+ | `nvm install 20` | MCPサーバーに必要（未導入時は20を導入） |
 | Claude Code CLI | `curl -fsSL https://claude.ai/install.sh \| bash` | Anthropic公式CLI（ネイティブ版を推奨。npm版は非推奨） |
 
 </details>
@@ -1162,16 +1164,18 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 │                                                                     │
 │  install.bat (Windows)                                              │
 │      │                                                              │
-│      ├── WSL2のチェック/インストール案内                              │
-│      └── Ubuntuのチェック/インストール案内                            │
+│      ├── WSL2のチェック（未導入時は wsl --install を実行）             │
+│      └── Ubuntu確認 + デフォルトディストリ設定                         │
 │                                                                     │
 │  first_setup.sh (Ubuntu/WSLで手動実行)                               │
 │      │                                                              │
 │      ├── tmuxのチェック/インストール                                  │
-│      ├── Node.js v20+のチェック/インストール (nvm経由)                │
+│      ├── Node.js v18+のチェック/インストール (nvm経由)                │
+│      ├── Python3/PyYAML/inotify-tools のチェック/インストール          │
 │      ├── Claude Code CLIのチェック/インストール（ネイティブ版）       │
 │      │       ※ npm版検出時はネイティブ版への移行を提案                │
-│      └── Memory MCPサーバー設定                                      │
+│      ├── queue/config 等の初期化 + 実行権限/alias設定                 │
+│      └── Memory MCPサーバー設定 + WSLメモリ最適化                     │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                      毎日の起動（毎日実行）                           │
@@ -1183,7 +1187,7 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 │      │         • "shogun"セッション（1ペイン）                        │
 │      │         • "multiagent"セッション（9ペイン、3x3グリッド）        │
 │      │                                                              │
-│      ├──▶ キューファイルとダッシュボードをリセット                     │
+│      ├──▶ キュー/ダッシュボードは -c/--clean 指定時のみリセット         │
 │      │                                                              │
 │      └──▶ 全エージェントでClaude Codeを起動                          │
 │                                                                     │
@@ -1218,6 +1222,9 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 # フル起動 + Windows Terminalタブを開く
 ./shutsujin_departure.sh -t
 ./shutsujin_departure.sh --terminal
+# シェル指定（bash / zsh）
+./shutsujin_departure.sh -shell bash
+./shutsujin_departure.sh --shell zsh
 
 # 将軍中継専用モード: 将軍のThinkingを無効化（コスト節約）
 ./shutsujin_departure.sh --shogun-no-thinking
@@ -1243,8 +1250,8 @@ tmux attach-session -t shogun     # 接続してコマンドを出す
 ./shutsujin_departure.sh -s       # セッションのみ作成
 
 # 特定のエージェントでClaude Codeを手動起動
-tmux send-keys -t shogun:0 'claude --dangerously-skip-permissions' Enter
-tmux send-keys -t multiagent:0.0 'claude --dangerously-skip-permissions' Enter
+tmux send-keys -t shogun:main 'claude --dangerously-skip-permissions' Enter
+tmux send-keys -t multiagent:agents.0 'claude --dangerously-skip-permissions' Enter
 ```
 
 **クラッシュ後の再起動：**
@@ -1262,10 +1269,9 @@ tmux kill-session -t multiagent
 <details>
 <summary><b>便利なエイリアス</b>（クリックで展開）</summary>
 
-`first_setup.sh` を実行すると、以下のエイリアスが `~/.bashrc` に自動追加されます：
+`first_setup.sh` を実行すると、以下2つのエイリアスが `~/.bashrc` に自動追加されます：
 
 ```bash
-alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
 alias css='tmux attach-session -t shogun'      # 将軍ウィンドウの起動
 alias csm='tmux attach-session -t multiagent'  # 家老・足軽ウィンドウの起動
 ```
