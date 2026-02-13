@@ -1,4 +1,4 @@
-.PHONY: test build lint check help install-deps clean
+.PHONY: test build lint check help install-deps install-flock-mac clean
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
+	@echo "  make install-flock-mac - Install GNU flock on macOS (optional)"
 	@echo "  make clean         - Clean test artifacts"
 	@echo ""
 
@@ -109,15 +110,33 @@ install-deps:
 	@if [ ! -d tests/test_helper/bats-assert ]; then \
 		git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert; \
 	fi
-	@echo "3. Checking system dependencies..."
-	@if ! command -v python3 >/dev/null 2>&1; then \
-		echo "WARNING: python3 not found (required for YAML parsing)"; \
-	fi
-	@if ! python3 -c "import yaml" 2>/dev/null; then \
-		echo "WARNING: python3-yaml not found"; \
-		echo "Install: sudo apt-get install python3-yaml (Linux) or pip3 install pyyaml (Mac)"; \
+	@echo "3. Checking venv + PyYAML..."
+	@if [ ! -f .venv/bin/python3 ]; then \
+		echo "WARNING: .venv not found. Run: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"; \
+	elif ! .venv/bin/python3 -c "import yaml" 2>/dev/null; then \
+		echo "WARNING: PyYAML not in venv. Run: .venv/bin/pip install -r requirements.txt"; \
 	fi
 	@echo "✓ Dependencies installed"
+
+# Install flock on Mac (optional performance optimization)
+install-flock-mac:
+	@echo "Installing GNU flock on macOS..."
+	@if [ "$$(uname)" != "Darwin" ]; then \
+		echo "ERROR: This target is for macOS only"; \
+		exit 1; \
+	fi
+	@if ! command -v brew >/dev/null 2>&1; then \
+		echo "ERROR: Homebrew not found. Install from https://brew.sh"; \
+		exit 1; \
+	fi
+	@brew install util-linux
+	@if command -v gflock >/dev/null 2>&1; then \
+		echo "✓ GNU flock installed as 'gflock'"; \
+		echo "inbox_write.sh will automatically use it for better performance"; \
+	else \
+		echo "ERROR: Installation failed"; \
+		exit 1; \
+	fi
 
 # Clean test artifacts
 clean:
@@ -133,7 +152,7 @@ dev: lint test
 # ローカルカスタマイズ（local_customizations/ から自動追加）
 # =============================================================================
 
-.PHONY: setup shutsujin start-setup stop status attach-shogun attach-agents
+.PHONY: setup shutsujin start-setup stop status shogun agents
 
 # -----------------------------------------------------------------------------
 # setup: 初回セットアップ
@@ -168,14 +187,14 @@ status:
 	@tmux list-sessions 2>/dev/null || echo "起動中のセッションはござらぬ"
 
 # -----------------------------------------------------------------------------
-# attach-shogun: 将軍セッションにアタッチ
+# shogun: 将軍セッションにアタッチ
 # -----------------------------------------------------------------------------
-attach-shogun:
+shogun:
 	@tmux attach -t shogun
 
 # -----------------------------------------------------------------------------
-# attach-agents: 家老・足軽セッションにアタッチ
+# agents: 家老・足軽セッションにアタッチ
 # -----------------------------------------------------------------------------
-attach-agents:
+agents:
 	@tmux attach -t multiagent
 

@@ -302,7 +302,12 @@ chmod +x *.sh
 
 # 3. 初回セットアップを実行
 ./first_setup.sh
+
+# 4. (macOSのみ・任意) パフォーマンス向上のためflockをインストール
+make install-flock-mac
 ```
+
+**macOSユーザーへの注記：** システムはPerlのflockを使用して動作します。GNU flock（`make install-flock-mac`）をインストールするとパフォーマンスが向上しますが、任意です。
 
 ### 毎日の起動
 
@@ -1151,6 +1156,36 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 ---
 
 ## 🛠️ 上級者向け
+
+### 自動ロードされる役割指示書
+
+各エージェントの役割別指示書は、`shutsujin_departure.sh` によるシステム起動時に**自動的にロード**されます。
+
+```bash
+# shutsujin_departure.sh 内で実行（CLI起動後）
+tmux send-keys -t shogun:main 'Read instructions/shogun.md' Enter
+tmux send-keys -t multiagent:agents.0 'Read instructions/karo.md' Enter
+tmux send-keys -t multiagent:agents.1 'Read instructions/ashigaru.md' Enter
+# ... （全8人の足軽に対して繰り返し）
+```
+
+**仕組み**：
+- `shutsujin_departure.sh` が各エージェントのCLIを起動
+- 3秒の安定化待機後、役割ファイルの `Read` コマンドを送信
+- ファイル内容が自動的にエージェントのコンテキストに読み込まれる
+- エージェントは役割を完全に理解した状態で作業開始可能
+
+**なぜ重要か**：
+- **以前**: エージェントが手動で指示書を読む必要があった（読み忘れの可能性あり）
+- **現在**: 起動時に自動的に読み込まれる
+- **結果**: エージェントが役割を理解せずに動作する可能性がゼロに
+
+**`/clear` について**：
+- `/clear` 後は役割指示書がコンテキストから失われます
+- ただし、CLAUDE.md/AGENTS.mdに十分な情報が含まれているため動作可能
+- 再読み込みが必要なのはエッジケースのみ（稀）
+
+ソースファイルは `instructions/` に単一の真実の情報源として残ります。
 
 <details>
 <summary><b>スクリプトアーキテクチャ</b>（クリックで展開）</summary>

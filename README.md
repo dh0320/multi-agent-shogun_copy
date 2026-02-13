@@ -302,7 +302,12 @@ chmod +x *.sh
 
 # 3. Run first-time setup
 ./first_setup.sh
+
+# 4. (macOS only - optional) Install flock for better performance
+make install-flock-mac
 ```
+
+**Note for macOS users:** The system works out-of-the-box using Perl's flock. Installing GNU flock (`make install-flock-mac`) provides better performance but is optional.
 
 ### Daily startup
 
@@ -1171,6 +1176,36 @@ Priority: Token > Basic > None. If neither is set, no auth headers are sent (bac
 ---
 
 ## Advanced
+
+### Auto-Loaded Role Instructions
+
+Each agent's role-specific instructions are **automatically loaded** during system deployment via `shutsujin_departure.sh`:
+
+```bash
+# In shutsujin_departure.sh (after CLI launch)
+tmux send-keys -t shogun:main 'Read instructions/shogun.md' Enter
+tmux send-keys -t multiagent:agents.0 'Read instructions/karo.md' Enter
+tmux send-keys -t multiagent:agents.1 'Read instructions/ashigaru.md' Enter
+# ... (repeated for all 8 ashigaru)
+```
+
+**How it works:**
+- `shutsujin_departure.sh` launches each agent's CLI
+- After a 3-second stabilization delay, it sends a `Read` command for the role file
+- The file content is loaded into the agent's context automatically
+- Agents can start working immediately with full role awareness
+
+**Why this matters:**
+- **Before**: Agents had to remember to read their instructions manually (could be forgotten)
+- **After**: Instructions are automatically read during deployment
+- **Result**: Zero chance of agents operating without knowing their role
+
+**Note on `/clear`:**
+- After `/clear`, role instructions are lost from context
+- However, CLAUDE.md/AGENTS.md contain enough info to operate
+- Re-reading instructions is only needed for edge cases (rare)
+
+The source files remain in `instructions/` as the single source of truth.
 
 <details>
 <summary><b>Script Architecture</b> (click to expand)</summary>

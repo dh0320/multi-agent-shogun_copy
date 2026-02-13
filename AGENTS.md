@@ -59,17 +59,19 @@ language:
 
 **This is ONE procedure for ALL situations**: fresh start, compaction, session continuation, or any state where you see AGENTS.md. You cannot distinguish these cases, and you don't need to. **Always follow the same steps.**
 
+**IMPORTANT**: Your role-specific instructions are NOW AUTO-LOADED during system deployment. When `shutsujin_departure.sh` starts, it automatically sends a Read command for your instructions file to each agent. You do NOT need to manually read it again.
+
+**Session Start Steps**:
 1. Identify self: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
 2. `mcp__memory__read_graph` — restore rules, preferences, lessons
-3. **Read your instructions file**: shogun→`instructions/generated/codex-shogun.md`, karo→`instructions/generated/codex-karo.md`, ashigaru→`instructions/generated/codex-ashigaru.md`. **NEVER SKIP** — even if a conversation summary exists. Summaries do NOT preserve persona, speech style, or forbidden actions.
-4. Rebuild state from primary YAML data (queue/, tasks/, reports/)
-5. Review forbidden actions, then start work
+3. Rebuild state from primary YAML data (queue/, tasks/, reports/)
+4. Review your auto-loaded forbidden actions (already in context from deployment), then start work
 
 **CRITICAL**: dashboard.md is secondary data (karo's summary). Primary data = YAML files. Always verify from YAML.
 
 ## /clear Recovery (ashigaru only)
 
-Lightweight recovery using only AGENTS.md (auto-loaded). Do NOT read instructions/generated/codex-ashigaru.md (cost saving).
+Lightweight recovery using AGENTS.md (auto-loaded at startup).
 
 ```
 Step 1: tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}' → ashigaru{N}
@@ -80,7 +82,7 @@ Step 4: If task has "project:" field → read context/{project}.md
 Step 5: Start work
 ```
 
-Forbidden after /clear: reading instructions/generated/codex-ashigaru.md (1st task), polling (F004), contacting humans directly (F002). Trust task YAML only — pre-/clear memory is gone.
+**Note**: After `/clear`, your role instructions are lost. However, `shutsujin_departure.sh` loaded them at deployment, and AGENTS.md contains enough context to operate. If critical role info is needed, re-read your instructions file manually (rare case — most tasks don't need it).
 
 ## Summary Generation (compaction)
 
