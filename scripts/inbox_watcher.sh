@@ -547,8 +547,12 @@ pane_is_active() {
 }
 
 # ─── Session attach detection ───
-# Returns 0 if the session containing PANE_TARGET has at least one client attached.
-# When detached, no human is watching — safe to send-keys even to shogun.
+# Function: session_has_client
+# Description: Checks if the tmux session containing PANE_TARGET has at least
+#   one client attached. Used to avoid suppressing send-keys when no human is
+#   watching (e.g. single-pane shogun session where pane_is_active is always true).
+# Arguments: none (uses global PANE_TARGET)
+# Returns: 0 if at least one client is attached, 1 otherwise
 session_has_client() {
     local session_name
     session_name=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" '#{session_name}' 2>/dev/null || true)
