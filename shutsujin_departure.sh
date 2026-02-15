@@ -677,6 +677,11 @@ if [ "$SETUP_ONLY" = false ]; then
         _shogun_cli_type=$(get_cli_type "shogun")
         _shogun_cmd=$(build_cli_command "shogun")
     fi
+    # Codex等の初期プロンプト付加（サジェストUI停止問題対策）
+    _startup_prompt=$(get_startup_prompt "shogun" 2>/dev/null)
+    if [[ -n "$_startup_prompt" ]]; then
+        _shogun_cmd="$_shogun_cmd \"$_startup_prompt\""
+    fi
     tmux set-option -p -t "shogun:main" @agent_cli "$_shogun_cli_type"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
         tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 $_shogun_cmd"
