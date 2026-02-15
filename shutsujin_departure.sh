@@ -762,6 +762,7 @@ if [ "$SETUP_ONLY" = false ]; then
         _ashi_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         if [ "$_ashi_cli" = "claude" ]; then
             tmux send-keys -t "multiagent:agents.${p}" 'Read instructions/ashigaru.md'
+            sleep 1
             tmux send-keys -t "multiagent:agents.${p}" Enter
         fi
     done
