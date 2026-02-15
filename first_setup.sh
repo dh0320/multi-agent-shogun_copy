@@ -357,7 +357,7 @@ if [ "$SETUP_OS" = "Darwin" ]; then
         log_warn "For better performance: brew install coreutils"
         log_warn "(Not required — the system works without it)"
     else
-        log_ok "GNU coreutils detected (gtimeout available)"
+        log_success "GNU coreutils detected (gtimeout available)"
     fi
 fi
 
