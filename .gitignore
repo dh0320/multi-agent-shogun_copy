@@ -93,6 +93,7 @@
 !scripts/seo_qc.py
 !scripts/seo_qc.sh
 !scripts/stop_hook_inbox.sh
+!scripts/cmd_completion_notifier.sh
 
 
 # SayTask (sample template only, not actual data)

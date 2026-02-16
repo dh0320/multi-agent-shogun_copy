@@ -21,5 +21,18 @@ while IFS= read -r line; do
     [ -n "$line" ] && AUTH_ARGS+=("$line")
 done < <(ntfy_get_auth_args "$SCRIPT_DIR/config/ntfy_auth.env")
 
+LOG_DIR="$SCRIPT_DIR/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/ntfy_send.log"
+
 # shellcheck disable=SC2086
-curl -s "${AUTH_ARGS[@]}" -H "Tags: outbound" -d "$1" "https://ntfy.sh/$TOPIC" > /dev/null
+RESPONSE=$(curl -s -w "\n%{http_code}" "${AUTH_ARGS[@]}" -H "Tags: outbound" -d "$1" "https://ntfy.sh/$TOPIC")
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+
+if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ] 2>/dev/null; then
+  echo "[$TIMESTAMP] SUCCESS (HTTP $HTTP_CODE): $1" >> "$LOG_FILE"
+else
+  echo "[$TIMESTAMP] FAILED (HTTP $HTTP_CODE): $1" >> "$LOG_FILE"
+  exit 1
+fi

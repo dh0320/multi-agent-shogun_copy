@@ -908,6 +908,16 @@ NINJA_EOF
 
     log_success "  └─ 10エージェント分のinbox_watcher起動完了（将軍+家老+足軽7+軍師）"
 
+    # ═══════════════════════════════════════════════════════════════
+    # STEP 6.6.1: cmd完了通知daemon起動
+    # ═══════════════════════════════════════════════════════════════
+    pkill -f "cmd_completion_notifier.sh" 2>/dev/null || true
+    sleep 0.5
+    nohup bash "$SCRIPT_DIR/scripts/cmd_completion_notifier.sh" \
+        >> "$SCRIPT_DIR/logs/cmd_completion_notifier.log" 2>&1 &
+    disown
+    log_info "📬 cmd完了通知daemon起動完了（shogun_to_karo.yaml監視→自動ntfy）"
+
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
     # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。
     log_info "📜 指示書読み込みは各エージェントが自律実行（CLAUDE.md Session Start）"
