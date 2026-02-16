@@ -1,0 +1,23 @@
+# Template for ✅完了承認待ち (Completion Pending Approval) dashboard items
+# Copy this to queue/dashboard_items/{cmd_id}.yaml and fill in the details
+
+cmd_id: cmd_XXX
+section: completion_pending
+display_title: "cmd_XXX: タスク名【担当】（YYYY-MM-DD HH:MM 完了）"
+display_content: |
+  ✅ **完了** - 完了概要を1行で記述
+
+  **実装内容**:
+  - 実装した機能や変更内容1
+  - 実装した機能や変更内容2
+  - 実装した機能や変更内容3
+
+  **git操作**:
+  - コミット: <commit_hash>
+  - ブランチ: <branch_name>
+  - PR: <PR_URL> (if applicable)
+
+  **報告**: [ashigaru{N}_report.yaml](queue/reports/ashigaru{N}_report.yaml)
+link: "queue/reports/ashigaru{N}_report.yaml"  # or PR URL
+skill_candidates: null
+timestamp: "YYYY-MM-DDTHH:MM:SS"

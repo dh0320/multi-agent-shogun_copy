@@ -209,6 +209,43 @@ skill_candidate:
 **Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, skill_candidate.
 Missing fields = incomplete report.
 
+## Dashboard Item YAML (F054)
+
+When reporting task completion, **optionally** create a dashboard item YAML to update dashboard.md sections (✅完了承認待ち, 🔄進行中, ⏸️保留中).
+
+**File path**: `queue/dashboard_items/{cmd_id}.yaml` or `queue/dashboard_items/{cmd_id}_phase{N}.yaml`
+
+**Format**:
+```yaml
+cmd_id: cmd_XXX
+section: completion_pending  # completion_pending | skill_candidate | in_progress | on_hold
+display_title: "cmd_XXX: タスク名（YYYY-MM-DD HH:MM 完了/開始）"
+display_content: |
+  ✅ **完了** - 概要1行
+
+  **実装内容**:
+  - 項目1
+  - 項目2
+
+  **報告**: [ashigaru{N}_report.yaml](queue/reports/ashigaru{N}_report.yaml)
+link: "queue/reports/ashigaru{N}_report.yaml"  # Optional: PR URL or report path
+skill_candidates: null  # Or list of skill candidates
+timestamp: "YYYY-MM-DDTHH:MM:SS"
+```
+
+**Sections**:
+- `completion_pending`: Task completed, awaiting lord approval (✅完了承認待ち)
+- `in_progress`: Task currently being worked on (🔄進行中)
+- `on_hold`: Task paused/blocked (⏸️保留中)
+- `skill_candidate`: Contains skill candidates (🎯スキル化候補)
+
+**When to create**:
+- Large/important tasks that lord should review
+- Tasks that require lord approval (e.g., PR merge, design decisions)
+- Skip for small routine tasks (e.g., bug fixes, documentation updates)
+
+**After creating**: Karo will run `bash scripts/generate_dashboard.sh` to regenerate dashboard.md.
+
 ## Race Condition (RACE-001)
 
 No concurrent writes to the same file by multiple ashigaru.

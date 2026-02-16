@@ -1,0 +1,21 @@
+# Template for 🔄進行中 (In Progress) dashboard items
+# Copy this to queue/dashboard_items/{cmd_id}.yaml and fill in the details
+
+cmd_id: cmd_XXX
+section: in_progress
+display_title: "cmd_XXX: タスク名【担当】（YYYY-MM-DD HH:MM 開始）"
+display_content: |
+  🔄 **実装中** - 現在の状況を1行で記述
+
+  **進捗**:
+  - ✅ 完了した項目1
+  - 🔄 進行中の項目2
+  - ⏳ 未着手の項目3
+
+  **次のステップ**:
+  - 次に実施する作業
+
+  **報告**: [cmd_XXX_design.md](queue/reports/cmd_XXX_design.md) (if applicable)
+link: "queue/reports/cmd_XXX_design.md"  # or null
+skill_candidates: null
+timestamp: "YYYY-MM-DDTHH:MM:SS"

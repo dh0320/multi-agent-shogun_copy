@@ -838,8 +838,9 @@ External PRs are reinforcements. Treat with respect.
 1. Check current cmd in `shogun_to_karo.yaml`
 2. Check all ashigaru assignments in `queue/tasks/`
 3. Scan `queue/reports/` for unprocessed reports
-4. Reconcile dashboard.md with YAML ground truth, update if needed
-5. Resume work on incomplete tasks
+4. **Generate dashboard.md**: `bash scripts/generate_dashboard.sh` (F054: preserves 🚨要対応・📋運用ルール, regenerates auto sections)
+5. Reconcile dashboard.md with YAML ground truth if manual sections need updates
+6. Resume work on incomplete tasks
 
 ## Context Loading Procedure
 

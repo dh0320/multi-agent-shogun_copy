@@ -1,0 +1,24 @@
+# Template for ⏸️保留中 (On Hold) dashboard items
+# Copy this to queue/dashboard_items/{cmd_id}.yaml and fill in the details
+
+cmd_id: cmd_XXX
+section: on_hold
+display_title: "cmd_XXX: タスク名【保留理由】"
+display_content: |
+  ⏸️ **保留中** - 保留理由を1行で記述
+
+  **状況**:
+  - 現在の状況や進捗
+  - ブロックされている理由
+
+  **ブロッカー**:
+  - 解除条件1（例: 殿の承認待ち、他タスクの完了待ち）
+  - 解除条件2
+
+  **次回アクション**:
+  - ブロッカー解除後に実施する作業
+
+  **報告**: [ashigaru{N}_report.yaml](queue/reports/ashigaru{N}_report.yaml) (if applicable)
+link: null
+skill_candidates: null
+timestamp: "YYYY-MM-DDTHH:MM:SS"
