@@ -745,14 +745,16 @@ if [ "$SETUP_ONLY" = false ]; then
     sleep 3  # CLI起動完了を待つ
     
     # 将軍
-    if [ "$_shogun_cli_type" = "claude" ]; then
-        tmux send-keys -t shogun:main 'Read instructions/shogun.md'
+    if [ "$_shogun_cli_type" = "claude" ] || [ "$_shogun_cli_type" = "agent" ]; then
+        _shogun_instruction=$(get_instruction_file "shogun" "$_shogun_cli_type")
+        tmux send-keys -t shogun:main "Read $_shogun_instruction"
         tmux send-keys -t shogun:main Enter
     fi
     
     # 家老
-    if [ "$_karo_cli_type" = "claude" ]; then
-        tmux send-keys -t "multiagent:agents.$((PANE_BASE + 0))" 'Read instructions/karo.md'
+    if [ "$_karo_cli_type" = "claude" ] || [ "$_karo_cli_type" = "agent" ]; then
+        _karo_instruction=$(get_instruction_file "karo" "$_karo_cli_type")
+        tmux send-keys -t "multiagent:agents.$((PANE_BASE + 0))" "Read $_karo_instruction"
         tmux send-keys -t "multiagent:agents.$((PANE_BASE + 0))" Enter
     fi
     
@@ -760,8 +762,9 @@ if [ "$SETUP_ONLY" = false ]; then
     for i in {1..8}; do
         p=$((PANE_BASE + i))
         _ashi_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        if [ "$_ashi_cli" = "claude" ]; then
-            tmux send-keys -t "multiagent:agents.${p}" 'Read instructions/ashigaru.md'
+        if [ "$_ashi_cli" = "claude" ] || [ "$_ashi_cli" = "agent" ]; then
+            _ashi_instruction=$(get_instruction_file "ashigaru${i}" "$_ashi_cli")
+            tmux send-keys -t "multiagent:agents.${p}" "Read $_ashi_instruction"
             sleep 1
             tmux send-keys -t "multiagent:agents.${p}" Enter
         fi

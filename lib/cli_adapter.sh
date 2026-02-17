@@ -15,7 +15,7 @@ CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi agent"
 
 # --- 内部ヘルパー ---
 
@@ -86,18 +86,18 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi') else 'claude')
+        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','agent') else 'claude')
         sys.exit(0)
     agent_cfg = agents.get('${agent_id}')
     if isinstance(agent_cfg, dict):
         t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi'):
+        if t in ('claude', 'codex', 'copilot', 'kimi', 'agent'):
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi'):
+        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'agent'):
             print(agent_cfg); sys.exit(0)
     default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi'):
+    if default in ('claude', 'codex', 'copilot', 'kimi', 'agent'):
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -150,6 +150,13 @@ build_cli_command() {
             fi
             echo "$cmd"
             ;;
+        agent)
+            local cmd="agent --yolo"
+            if [[ -n "$model" ]]; then
+                cmd="$cmd --model $model"
+            fi
+            echo "$cmd"
+            ;;
         *)
             echo "claude --dangerously-skip-permissions"
             ;;
@@ -178,6 +185,7 @@ get_instruction_file() {
         codex)   echo "instructions/codex-${role}.md" ;;
         copilot) echo ".github/copilot-instructions-${role}.md" ;;
         kimi)    echo "instructions/generated/kimi-${role}.md" ;;
+        agent)   echo "instructions/agent-${role}.md" ;;
         *)       echo "instructions/${role}.md" ;;
     esac
 }
@@ -211,6 +219,12 @@ validate_cli_availability() {
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
                 return 1
             fi
+            ;;
+        agent)
+            command -v agent &>/dev/null || {
+                echo "[ERROR] Cursor Agent CLI not found. Install with: cursor --install-agent-cli" >&2
+                return 1
+            }
             ;;
         *)
             echo "[ERROR] Unknown CLI type: '$cli_type'. Allowed: $CLI_ADAPTER_ALLOWED_CLIS" >&2
@@ -254,6 +268,15 @@ get_agent_model() {
                 shogun|karo)    echo "k2.5" ;;
                 ashigaru*)      echo "k2.5" ;;
                 *)              echo "k2.5" ;;
+            esac
+            ;;
+        agent)
+            # Cursor Agent CLI用デフォルトモデル
+            case "$agent_id" in
+                shogun|karo)    echo "sonnet-4.5" ;;
+                ashigaru[1-4])  echo "sonnet-4.5" ;;
+                ashigaru[5-8])  echo "opus-4.6" ;;
+                *)              echo "sonnet-4.5" ;;
             esac
             ;;
         *)
