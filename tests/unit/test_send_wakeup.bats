@@ -48,7 +48,14 @@
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     export WATCHER_SCRIPT="$PROJECT_ROOT/scripts/inbox_watcher.sh"
-    export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
+    
+    # Prefer .venv python3, fallback to system python3
+    if [[ -x "$PROJECT_ROOT/.venv/bin/python3" ]]; then
+        export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
+    else
+        export VENV_PYTHON="python3"
+    fi
+    
     [ -f "$WATCHER_SCRIPT" ] || return 1
     "$VENV_PYTHON" -c "import yaml" 2>/dev/null || return 1
 }
