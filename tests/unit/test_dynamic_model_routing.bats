@@ -1,0 +1,357 @@
+#!/usr/bin/env bats
+# test_dynamic_model_routing.bats — Dynamic Model Routing Phase 1 ユニットテスト
+# DMR-SPEC-001 準拠 (TC-DMR-001〜055)
+# Issue #53 / TDD Red Phase
+
+# --- セットアップ ---
+
+setup() {
+    TEST_TMP="$(mktemp -d)"
+    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+
+    # Phase 1 テスト用: capability_tiers定義済み
+    cat > "${TEST_TMP}/settings_with_tiers.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    ashigaru1:
+      type: codex
+      model: gpt-5.3-codex-spark
+    ashigaru2:
+      type: claude
+      model: claude-sonnet-4-5-20250929
+capability_tiers:
+  gpt-5.3-codex-spark:
+    max_bloom: 3
+    cost_group: chatgpt_pro
+  gpt-5.3:
+    max_bloom: 4
+    cost_group: chatgpt_pro
+  claude-sonnet-4-5-20250929:
+    max_bloom: 5
+    cost_group: claude_max
+  claude-opus-4-6:
+    max_bloom: 6
+    cost_group: claude_max
+YAML
+
+    # capability_tiersセクション不在（後方互換テスト）
+    cat > "${TEST_TMP}/settings_no_tiers.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    ashigaru1:
+      type: codex
+      model: gpt-5.3-codex-spark
+YAML
+
+    # 空ファイル
+    cat > "${TEST_TMP}/settings_empty.yaml" << 'YAML'
+YAML
+
+    # YAML構文エラー
+    cat > "${TEST_TMP}/settings_broken.yaml" << 'YAML'
+capability_tiers:
+  model: [broken yaml
+  agents: {{invalid
+YAML
+
+    # bloom_routing設定テスト用
+    cat > "${TEST_TMP}/settings_bloom_auto.yaml" << 'YAML'
+bloom_routing: auto
+capability_tiers:
+  gpt-5.3-codex-spark:
+    max_bloom: 3
+    cost_group: chatgpt_pro
+  claude-opus-4-6:
+    max_bloom: 6
+    cost_group: claude_max
+YAML
+
+    cat > "${TEST_TMP}/settings_bloom_manual.yaml" << 'YAML'
+bloom_routing: manual
+YAML
+
+    cat > "${TEST_TMP}/settings_bloom_off.yaml" << 'YAML'
+bloom_routing: "off"
+YAML
+
+    cat > "${TEST_TMP}/settings_bloom_invalid.yaml" << 'YAML'
+bloom_routing: invalid_value
+YAML
+
+    # コスト優先テスト用: 同一max_bloomで異なるcost_group
+    cat > "${TEST_TMP}/settings_cost_priority.yaml" << 'YAML'
+capability_tiers:
+  model-chatgpt-a:
+    max_bloom: 4
+    cost_group: chatgpt_pro
+  model-claude-a:
+    max_bloom: 4
+    cost_group: claude_max
+  gpt-5.3-codex-spark:
+    max_bloom: 3
+    cost_group: chatgpt_pro
+  claude-opus-4-6:
+    max_bloom: 6
+    cost_group: claude_max
+YAML
+
+    # .venvへのsymlinkを作成
+    if [ -d "${PROJECT_ROOT}/.venv" ]; then
+        ln -sf "${PROJECT_ROOT}/.venv" "${TEST_TMP}/.venv"
+    fi
+}
+
+teardown() {
+    rm -rf "$TEST_TMP"
+}
+
+# ヘルパー: 特定のsettings.yamlでcli_adapterをロード
+load_adapter_with() {
+    local settings_file="$1"
+    export CLI_ADAPTER_SETTINGS="$settings_file"
+    export CLI_ADAPTER_PROJECT_ROOT="$PROJECT_ROOT"
+    source "${PROJECT_ROOT}/lib/cli_adapter.sh"
+}
+
+# =============================================================================
+# TC-DMR-001〜003: FR-01 settings.yaml capability_tiersセクション
+# =============================================================================
+
+@test "TC-DMR-001: FR-01 capability_tiers基本読取 — パースエラーなし" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # get_capability_tier が定義されている（関数が存在する）
+    type get_capability_tier &>/dev/null
+    # Spark の max_bloom が読取可能
+    result=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result" = "3" ]
+}
+
+@test "TC-DMR-002: FR-01 capability_tiersセクション不在 — 後方互換" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    # エラーにならず、デフォルト値(6)を返す
+    result=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result" = "6" ]
+}
+
+@test "TC-DMR-003: FR-01 cost_group読取" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_cost_group "gpt-5.3-codex-spark")
+    [ "$result" = "chatgpt_pro" ]
+}
+
+# =============================================================================
+# TC-DMR-010〜017: FR-02 get_capability_tier()
+# =============================================================================
+
+@test "TC-DMR-010: FR-02 Spark → 3" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result" = "3" ]
+}
+
+@test "TC-DMR-011: FR-02 Codex 5.3 → 4" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "gpt-5.3")
+    [ "$result" = "4" ]
+}
+
+@test "TC-DMR-012: FR-02 Sonnet Thinking → 5" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "claude-sonnet-4-5-20250929")
+    [ "$result" = "5" ]
+}
+
+@test "TC-DMR-013: FR-02 Opus Thinking → 6" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "claude-opus-4-6")
+    [ "$result" = "6" ]
+}
+
+@test "TC-DMR-014: FR-02 未定義モデル → 6" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "unknown-model")
+    [ "$result" = "6" ]
+}
+
+@test "TC-DMR-015: FR-02 capability_tiersセクション不在 → 6" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result" = "6" ]
+}
+
+@test "TC-DMR-016: FR-02 YAML破損 → 6" {
+    load_adapter_with "${TEST_TMP}/settings_broken.yaml"
+    result=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result" = "6" ]
+}
+
+@test "TC-DMR-017: FR-02 空文字入力 → 6" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_capability_tier "")
+    [ "$result" = "6" ]
+}
+
+# =============================================================================
+# TC-DMR-020〜029: FR-03 get_recommended_model()
+# =============================================================================
+
+@test "TC-DMR-020: FR-03 L1 → Spark" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 1)
+    [ "$result" = "gpt-5.3-codex-spark" ]
+}
+
+@test "TC-DMR-021: FR-03 L2 → Spark" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 2)
+    [ "$result" = "gpt-5.3-codex-spark" ]
+}
+
+@test "TC-DMR-022: FR-03 L3 → Spark" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 3)
+    [ "$result" = "gpt-5.3-codex-spark" ]
+}
+
+@test "TC-DMR-023: FR-03 L4 → Codex 5.3" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 4)
+    [ "$result" = "gpt-5.3" ]
+}
+
+@test "TC-DMR-024: FR-03 L5 → Sonnet Thinking" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 5)
+    [ "$result" = "claude-sonnet-4-5-20250929" ]
+}
+
+@test "TC-DMR-025: FR-03 L6 → Opus Thinking" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 6)
+    [ "$result" = "claude-opus-4-6" ]
+}
+
+@test "TC-DMR-026: FR-03 capability_tiersセクション不在 → 空文字" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result=$(get_recommended_model 3)
+    [ "$result" = "" ]
+}
+
+@test "TC-DMR-027: FR-03 範囲外(0) → exit 1" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    run get_recommended_model 0
+    [ "$status" -eq 1 ]
+}
+
+@test "TC-DMR-028: FR-03 範囲外(7) → exit 1" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    run get_recommended_model 7
+    [ "$status" -eq 1 ]
+}
+
+@test "TC-DMR-029: FR-03 コスト優先 — chatgpt_proが優先" {
+    load_adapter_with "${TEST_TMP}/settings_cost_priority.yaml"
+    result=$(get_recommended_model 4)
+    [ "$result" = "model-chatgpt-a" ]
+}
+
+# =============================================================================
+# TC-DMR-030〜033: FR-04 get_cost_group()
+# =============================================================================
+
+@test "TC-DMR-030: FR-04 Spark → chatgpt_pro" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_cost_group "gpt-5.3-codex-spark")
+    [ "$result" = "chatgpt_pro" ]
+}
+
+@test "TC-DMR-031: FR-04 Opus → claude_max" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_cost_group "claude-opus-4-6")
+    [ "$result" = "claude_max" ]
+}
+
+@test "TC-DMR-032: FR-04 未定義モデル → unknown" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_cost_group "unknown-model")
+    [ "$result" = "unknown" ]
+}
+
+@test "TC-DMR-033: FR-04 capability_tiersセクション不在 → unknown" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result=$(get_cost_group "gpt-5.3-codex-spark")
+    [ "$result" = "unknown" ]
+}
+
+# =============================================================================
+# TC-DMR-040〜041: NFR-01 後方互換性
+# =============================================================================
+
+@test "TC-DMR-040: NFR-01 既存get_cli_type回帰なし" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    # 既存関数がcapability_tiers追加後も正常動作
+    result=$(get_cli_type "ashigaru1")
+    [ "$result" = "codex" ]
+}
+
+@test "TC-DMR-041: NFR-01 既存get_agent_model回帰なし" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result=$(get_agent_model "ashigaru1")
+    [ "$result" = "gpt-5.3-codex-spark" ]
+}
+
+# =============================================================================
+# TC-DMR-050: NFR-05 テスト容易性
+# =============================================================================
+
+@test "TC-DMR-050: NFR-05 CLI_ADAPTER_SETTINGS注入" {
+    # 異なるsettingsファイルを注入してテスト可能なことを確認
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result1=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result1" = "3" ]
+
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result2=$(get_capability_tier "gpt-5.3-codex-spark")
+    [ "$result2" = "6" ]
+}
+
+# =============================================================================
+# TC-DMR-055: NFR-06 冪等性
+# =============================================================================
+
+@test "TC-DMR-055: NFR-06 get_recommended_model連続呼出で同一結果" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result1=$(get_recommended_model 4)
+    result2=$(get_recommended_model 4)
+    [ "$result1" = "$result2" ]
+}
+
+# =============================================================================
+# TC-DMR-220〜224: FR-09 bloom_routing設定（Phase 3だがL1で先行テスト可能）
+# =============================================================================
+
+@test "TC-DMR-220: FR-09 bloom_routing=auto読取" {
+    load_adapter_with "${TEST_TMP}/settings_bloom_auto.yaml"
+    result=$(_cli_adapter_read_yaml "bloom_routing" "off")
+    [ "$result" = "auto" ]
+}
+
+@test "TC-DMR-221: FR-09 bloom_routing=manual読取" {
+    load_adapter_with "${TEST_TMP}/settings_bloom_manual.yaml"
+    result=$(_cli_adapter_read_yaml "bloom_routing" "off")
+    [ "$result" = "manual" ]
+}
+
+@test "TC-DMR-222: FR-09 bloom_routing=off読取" {
+    load_adapter_with "${TEST_TMP}/settings_bloom_off.yaml"
+    result=$(_cli_adapter_read_yaml "bloom_routing" "off")
+    [ "$result" = "off" ]
+}
+
+@test "TC-DMR-223: FR-09 bloom_routing未定義 → off" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    result=$(_cli_adapter_read_yaml "bloom_routing" "off")
+    [ "$result" = "off" ]
+}

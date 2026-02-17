@@ -295,3 +295,136 @@ get_startup_prompt() {
             ;;
     esac
 }
+
+# =============================================================================
+# Dynamic Model Routing — Issue #53 Phase 1
+# capability_tier読取、推奨モデル選定、コストグループ取得
+# =============================================================================
+
+# get_capability_tier(model_name)
+# 指定モデルのBloomレベル上限を返す
+# capability_tiersセクション未定義 or モデル未定義 → 6（制限なし）
+# Note: モデル名にドットを含む場合があるため _cli_adapter_read_yaml は使わない
+get_capability_tier() {
+    local model_name="$1"
+
+    if [[ -z "$model_name" ]]; then
+        echo "6"
+        return 0
+    fi
+
+    local result
+    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys
+try:
+    with open('${CLI_ADAPTER_SETTINGS}') as f:
+        cfg = yaml.safe_load(f) or {}
+    tiers = cfg.get('capability_tiers')
+    if not tiers or not isinstance(tiers, dict):
+        print('6'); sys.exit(0)
+    spec = tiers.get('${model_name}')
+    if not spec or not isinstance(spec, dict):
+        print('6'); sys.exit(0)
+    mb = spec.get('max_bloom', 6)
+    if isinstance(mb, int) and 1 <= mb <= 6:
+        print(mb)
+    else:
+        print('6')
+except Exception:
+    print('6')
+" 2>/dev/null)
+
+    if [[ -z "$result" ]]; then
+        echo "6"
+    else
+        echo "$result"
+    fi
+}
+
+# get_cost_group(model_name)
+# 指定モデルのコストグループを返す
+# 未定義 → "unknown"
+# Note: モデル名にドットを含む場合があるため _cli_adapter_read_yaml は使わない
+get_cost_group() {
+    local model_name="$1"
+
+    if [[ -z "$model_name" ]]; then
+        echo "unknown"
+        return 0
+    fi
+
+    local result
+    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys
+try:
+    with open('${CLI_ADAPTER_SETTINGS}') as f:
+        cfg = yaml.safe_load(f) or {}
+    tiers = cfg.get('capability_tiers')
+    if not tiers or not isinstance(tiers, dict):
+        print('unknown'); sys.exit(0)
+    spec = tiers.get('${model_name}')
+    if not spec or not isinstance(spec, dict):
+        print('unknown'); sys.exit(0)
+    cg = spec.get('cost_group', 'unknown')
+    print(cg if cg else 'unknown')
+except Exception:
+    print('unknown')
+" 2>/dev/null)
+
+    if [[ -z "$result" ]]; then
+        echo "unknown"
+    else
+        echo "$result"
+    fi
+}
+
+# get_recommended_model(bloom_level)
+# 指定Bloomレベルに対応する最もコスト効率の良いモデルを返す
+# capability_tiersセクション不在 → 空文字列
+# bloom_level範囲外(1-6以外) → 空文字列 + exit code 1
+get_recommended_model() {
+    local bloom_level="$1"
+
+    # 範囲チェック
+    if [[ ! "$bloom_level" =~ ^[1-6]$ ]]; then
+        echo ""
+        return 1
+    fi
+
+    local result
+    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys
+try:
+    with open('${CLI_ADAPTER_SETTINGS}') as f:
+        cfg = yaml.safe_load(f) or {}
+    tiers = cfg.get('capability_tiers')
+    if not tiers or not isinstance(tiers, dict):
+        print('')
+        sys.exit(0)
+
+    bloom = int('${bloom_level}')
+    cost_priority = {'chatgpt_pro': 0, 'claude_max': 1}
+
+    candidates = []
+    for model, spec in tiers.items():
+        if not isinstance(spec, dict):
+            continue
+        mb = spec.get('max_bloom', 6)
+        if isinstance(mb, int) and mb >= bloom:
+            cg = spec.get('cost_group', 'unknown')
+            candidates.append((cost_priority.get(cg, 99), mb, model))
+
+    if not candidates:
+        # No model can handle this bloom level — pick the highest
+        best = max(tiers.items(), key=lambda x: x[1].get('max_bloom', 0) if isinstance(x[1], dict) else 0)
+        print(best[0])
+    else:
+        # Sort by: 1) lowest max_bloom (just enough), 2) cost priority (chatgpt_pro first)
+        candidates.sort(key=lambda x: (x[1], x[0]))
+        print(candidates[0][2])
+except Exception:
+    print('')
+" 2>/dev/null)
+
+    echo "$result"
+}
