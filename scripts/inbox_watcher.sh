@@ -51,19 +51,21 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     # Detect OS and select file-watching backend
     INBOX_WATCHER_OS="$(uname -s)"
     if [ "$INBOX_WATCHER_OS" = "Darwin" ]; then
-        # macOS: use fswatch instead of inotifywait
-        if ! command -v fswatch &>/dev/null; then
-            echo "[inbox_watcher] ERROR: fswatch not found. Install: brew install fswatch" >&2
-            exit 1
+        # macOS: prefer fswatch. If unavailable, fall back to timeout polling.
+        if command -v fswatch &>/dev/null; then
+            WATCH_BACKEND="fswatch"
+        else
+            echo "[inbox_watcher] WARN: fswatch not found; falling back to polling backend" >&2
+            WATCH_BACKEND="poll"
         fi
-        WATCH_BACKEND="fswatch"
     else
-        # Linux: use inotifywait
-        if ! command -v inotifywait &>/dev/null; then
-            echo "[inbox_watcher] ERROR: inotifywait not found. Install: sudo apt install inotify-tools" >&2
-            exit 1
+        # Linux: prefer inotifywait. If unavailable, fall back to timeout polling.
+        if command -v inotifywait &>/dev/null; then
+            WATCH_BACKEND="inotifywait"
+        else
+            echo "[inbox_watcher] WARN: inotifywait not found; falling back to polling backend" >&2
+            WATCH_BACKEND="poll"
         fi
-        WATCH_BACKEND="inotifywait"
     fi
     echo "[$(date)] File watch backend: $WATCH_BACKEND" >&2
 fi
@@ -104,6 +106,13 @@ LAST_NUDGE_COUNT=${LAST_NUDGE_COUNT:-""}
 NUDGE_COOLDOWN_SEC=${NUDGE_COOLDOWN_SEC:-60}
 # Codex は「思考中に入力が入ると即拾う」挙動があり、思考がループすることがあるため長めにする。
 NUDGE_COOLDOWN_SEC_CODEX=${NUDGE_COOLDOWN_SEC_CODEX:-300}
+
+# ─── Banner throttle (busy/unsafe to send-keys) ───
+# Busy中や人間入力中は send-keys を避け、display-message で inboxN を掲示する。
+# この掲示は send-keys のスロットルとは独立であるべし（busy解除直後のnudgeを潰さない）。
+LAST_BANNER_TS=${LAST_BANNER_TS:-0}
+LAST_BANNER_COUNT=${LAST_BANNER_COUNT:-""}
+BANNER_COOLDOWN_SEC=${BANNER_COOLDOWN_SEC:-30}
 
 # ─── Context reset tracking ───
 # Tracks whether we've sent /new or /clear for the current task_assigned batch.
@@ -183,9 +192,45 @@ should_throttle_nudge() {
         fi
     fi
 
-    LAST_NUDGE_COUNT="$unread_count"
-    LAST_NUDGE_TS="$now"
     return 1
+}
+
+mark_nudge_sent() {
+    local unread_count="${1:-0}"
+    LAST_NUDGE_COUNT="$unread_count"
+    LAST_NUDGE_TS="$(date +%s)"
+}
+
+should_throttle_banner() {
+    local unread_count="${1:-0}"
+    local now
+    now=$(date +%s)
+
+    if [ "${LAST_BANNER_COUNT:-}" = "$unread_count" ] && [ "${LAST_BANNER_TS:-0}" -gt 0 ]; then
+        local age=$((now - LAST_BANNER_TS))
+        if [ "$age" -lt "${BANNER_COOLDOWN_SEC:-30}" ]; then
+            echo "[$(date)] [SKIP] Throttling banner for $AGENT_ID: inbox${unread_count} (${age}s < ${BANNER_COOLDOWN_SEC}s)" >&2
+            return 0  # throttle
+        fi
+    fi
+    return 1  # allow
+}
+
+show_unread_banner() {
+    local unread_count="${1:-0}"
+    local reason="${2:-}"
+
+    # Note: throttle helper returns 0 when we should SKIP.
+    if should_throttle_banner "$unread_count"; then
+        return 0
+    fi
+
+    echo "[$(date)] [DISPLAY] ${reason:-unread} — showing banner: inbox${unread_count} ($AGENT_ID @ $PANE_TARGET)" >&2
+    timeout 2 tmux display-message -t "$PANE_TARGET" -d 5000 "inbox${unread_count}" 2>/dev/null || true
+
+    LAST_BANNER_COUNT="$unread_count"
+    LAST_BANNER_TS="$(date +%s)"
+    return 0
 }
 
 is_valid_cli_type() {
@@ -603,7 +648,8 @@ send_wakeup() {
     local nudge="inbox${unread_count}"
 
     if [ "${FINAL_ESCALATION_ONLY:-0}" = "1" ]; then
-        echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing normal nudge for $AGENT_ID" >&2
+        # Key injection is suppressed, but humans still need a hint.
+        show_unread_banner "$unread_count" "FINAL_ESCALATION_ONLY"
         return 0
     fi
 
@@ -621,7 +667,8 @@ send_wakeup() {
         if [[ "$busy_cli_wakeup" == "claude" ]]; then
             echo "[$(date)] [SKIP] Agent $AGENT_ID is busy (claude) — Stop hook will deliver, no nudge" >&2
         else
-            echo "[$(date)] [SKIP] Agent $AGENT_ID is busy ($busy_cli_wakeup), deferring nudge" >&2
+            echo "[$(date)] [SKIP] Agent $AGENT_ID is busy ($busy_cli_wakeup), deferring send-keys" >&2
+            show_unread_banner "$unread_count" "busy"
         fi
         return 0
     fi
@@ -634,8 +681,7 @@ send_wakeup() {
     # (it can clobber the Lord's input). Show a tmux message instead.
     # If session is detached, no human is watching — safe to send-keys normally.
     if [ "$AGENT_ID" = "shogun" ] && pane_is_active && session_has_client; then
-        echo "[$(date)] [DISPLAY] shogun pane is active + attached — showing nudge: inbox${unread_count}" >&2
-        timeout 2 tmux display-message -t "$PANE_TARGET" -d 5000 "inbox${unread_count}" 2>/dev/null || true
+        show_unread_banner "$unread_count" "shogun pane active"
         return 0
     fi
 
@@ -657,12 +703,17 @@ send_wakeup() {
     if timeout 5 tmux send-keys -t "$PANE_TARGET" "$nudge" 2>/dev/null; then
         sleep 0.3
         timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
+        mark_nudge_sent "$unread_count"
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
         return 0
     fi
 
     echo "[$(date)] WARNING: send-keys failed or timed out for $AGENT_ID" >&2
-    return 0  # Never return 1 — set -euo pipefail would kill the watcher daemon
+    # Production watcher must never die under set -e. For unit tests, allow failure.
+    if [ "${__INBOX_WATCHER_TESTING__:-}" = "1" ]; then
+        return 1
+    fi
+    return 0
 }
 
 # ─── Send wake-up nudge with Escape prefix ───
@@ -965,10 +1016,14 @@ while true; do
                 rc=0  # event
             fi
         fi
-    else
+    elif [ "${WATCH_BACKEND:-inotifywait}" = "inotifywait" ]; then
         # Linux: inotifywait (original behavior)
         inotifywait -q -t "$INOTIFY_TIMEOUT" -e modify -e close_write "$INBOX" 2>/dev/null
         rc=$?
+    else
+        # polling fallback when fswatch/inotifywait is unavailable
+        sleep "$INOTIFY_TIMEOUT"
+        rc=2
     fi
     set -e
 
