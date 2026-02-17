@@ -699,9 +699,9 @@ if [ "$SETUP_ONLY" = false ]; then
     done
 
     # ═══════════════════════════════════════════════════════════════════
-    # STEP 6.6: inbox_watcher起動（全エージェント）
+    # STEP 6.6: inbox_watcher起動（watcher_supervisor経由）
     # ═══════════════════════════════════════════════════════════════════
-    log_info "📬 メールボックス監視を起動中..."
+    log_info "📬 メールボックス監視を起動中（supervisor経由）..."
 
     # inbox ディレクトリ初期化（シンボリックリンク先のLinux FSに作成）
     mkdir -p "$SCRIPT_DIR/logs"
@@ -711,34 +711,18 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 既存のwatcherと孤児inotifywait/fswatchをkill
     pkill -f "inbox_watcher.sh" 2>/dev/null || true
+    pkill -f "watcher_supervisor" 2>/dev/null || true
     pkill -f "inotifywait.*queue/inbox" 2>/dev/null || true
     pkill -f "fswatch.*queue/inbox" 2>/dev/null || true
+    tmux kill-window -t shogun:watchers 2>/dev/null || true
     sleep 1
 
-    # 将軍のwatcher（ntfy受信の自動起床に必要）
-    # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
-    _shogun_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
-    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" \
-        >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
-    disown
+    # watcher_supervisor を shogun:watchers window で起動
+    # supervisorが各watcherを監視し、クラッシュ時は自動再起動する
+    tmux new-window -t shogun -n watchers -d
+    tmux send-keys -t shogun:watchers "cd '$SCRIPT_DIR' && bash scripts/watcher_supervisor.sh" Enter
 
-    # 家老のwatcher
-    _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
-    nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" \
-        >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
-    disown
-
-    # 足軽のwatcher
-    for i in {1..8}; do
-        p=$((PANE_BASE + i))
-        _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "ashigaru${i}" "multiagent:agents.${p}" "$_ashi_watcher_cli" \
-            >> "$SCRIPT_DIR/logs/inbox_watcher_ashigaru${i}.log" 2>&1 &
-        disown
-    done
-
-    log_success "  └─ 10エージェント分のinbox_watcher起動完了"
+    log_success "  └─ watcher_supervisor起動完了（10エージェント分を監視）"
 
     # STEP 6.7: 役割ドキュメント自動読み込み（起動後にRead実行）
     log_war "📜 各エージェントに役割ドキュメントを読み込ませ中..."

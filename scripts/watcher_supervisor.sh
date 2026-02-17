@@ -8,9 +8,13 @@ cd "$SCRIPT_DIR"
 
 mkdir -p "$SCRIPT_DIR/logs"
 
+# Get pane-base-index (0 or 1) for dynamic pane targeting
+PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
+
 # Agent configurations (parallel arrays instead of associative array)
 AGENTS=("shogun" "karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
-PANES=("shogun:main" "multiagent:agents.0" "multiagent:agents.1" "multiagent:agents.2" "multiagent:agents.3" "multiagent:agents.4" "multiagent:agents.5" "multiagent:agents.6" "multiagent:agents.7" "multiagent:agents.8")
+# Dynamically construct pane targets based on pane-base-index
+PANES=("shogun:main" "multiagent:agents.$((PANE_BASE+0))" "multiagent:agents.$((PANE_BASE+1))" "multiagent:agents.$((PANE_BASE+2))" "multiagent:agents.$((PANE_BASE+3))" "multiagent:agents.$((PANE_BASE+4))" "multiagent:agents.$((PANE_BASE+5))" "multiagent:agents.$((PANE_BASE+6))" "multiagent:agents.$((PANE_BASE+7))" "multiagent:agents.$((PANE_BASE+8))")
 PIDS=()
 
 echo "=== Watcher Supervisor Started ==="

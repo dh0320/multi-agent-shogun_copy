@@ -207,7 +207,7 @@ should_throttle_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi) return 0 ;;
+        claude|codex|copilot|kimi|agent) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -458,7 +458,7 @@ send_cli_command() {
                 return 0
             fi
             ;;
-        # claude: commands pass through as-is
+        # claude, agent: commands pass through as-is
     esac
 
     echo "[$(date)] [SEND-KEYS] Sending CLI command to $AGENT_ID ($effective_cli): $actual_cmd" >&2
@@ -501,6 +501,7 @@ send_context_reset() {
         claude)   reset_cmd="/clear" ;;
         copilot)  reset_cmd="/clear" ;;
         kimi)     reset_cmd="/clear" ;;
+        agent)    reset_cmd="/clear" ;;
         *)        reset_cmd="/new" ;;  # safe default (codex-safe)
     esac
 
@@ -518,11 +519,15 @@ send_context_reset() {
         sleep 5
         if ! agent_is_busy; then
             echo "[$(date)] [CONTEXT-RESET] $AGENT_ID idle after ${attempt}×5s — ready for nudge" >&2
+            # Update LAST_NUDGE_TS to prevent immediate re-nudge after context reset
+            LAST_NUDGE_TS=$(date +%s)
             return 0
         fi
         echo "[$(date)] [CONTEXT-RESET] $AGENT_ID still busy after ${attempt}×5s — retrying" >&2
     done
     echo "[$(date)] [CONTEXT-RESET] $AGENT_ID still busy after 15s — proceeding with nudge anyway" >&2
+    # Update LAST_NUDGE_TS to prevent immediate re-nudge even if still busy
+    LAST_NUDGE_TS=$(date +%s)
 }
 
 # ─── Agent self-watch detection ───
@@ -625,6 +630,8 @@ send_wakeup() {
         sleep 0.3
         timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
+        LAST_NUDGE_TS=$(date +%s)
+        LAST_NUDGE_COUNT="$unread_count"
         return 0
     fi
 
