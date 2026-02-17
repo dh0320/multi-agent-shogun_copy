@@ -7,7 +7,7 @@
 #   T-SW-001: send_wakeup — active self-watch → skip nudge
 #   T-SW-002: send_wakeup — no self-watch → tmux send-keys
 #   T-SW-003: send_wakeup — send-keys content is "inboxN" + Enter (separated)
-#   T-SW-004: send_wakeup — send-keys failure → return 1
+#   T-SW-004: send_wakeup — send-keys failure → logs WARNING but returns 0 (daemon protection)
 #   T-SW-005: send_wakeup — no paste-buffer or set-buffer used
 #   T-SW-006: agent_has_self_watch — detects inotifywait process
 #   T-SW-007: agent_has_self_watch — no inotifywait → returns 1
@@ -164,11 +164,11 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
-# --- T-SW-004: send-keys failure → return 1 ---
+# --- T-SW-004: send-keys failure → logs WARNING but returns 0 ---
 
-@test "T-SW-004: send_wakeup returns 1 when send-keys fails" {
+@test "T-SW-004: send_wakeup returns 0 even when send-keys fails (daemon protection)" {
     run bash -c "MOCK_SENDKEYS_RC=1; source '$TEST_HARNESS' && send_wakeup 2"
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 0 ]
 
     echo "$output" | grep -qi "WARNING\|failed"
 }

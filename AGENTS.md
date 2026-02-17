@@ -59,7 +59,7 @@ language:
 
 **This is ONE procedure for ALL situations**: fresh start, compaction, session continuation, or any state where you see AGENTS.md. You cannot distinguish these cases, and you don't need to. **Always follow the same steps.**
 
-**IMPORTANT**: Your role-specific instructions are NOW AUTO-LOADED during system deployment. When `shutsujin_departure.sh` starts, it automatically sends a Read command for your instructions file to each agent. You do NOT need to manually read it again.
+**IMPORTANT**: Your role-specific instructions are NOW AUTO-LOADED during system deployment. When `shutsujin_departure.sh` starts, it automatically sends a Read command for `instructions/{role}.md` to each agent. You do NOT need to manually read it again.
 
 **Session Start Steps**:
 1. Identify self: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
@@ -82,7 +82,7 @@ Step 4: If task has "project:" field → read context/{project}.md
 Step 5: Start work
 ```
 
-**Note**: After `/clear`, your role instructions are lost. However, `shutsujin_departure.sh` loaded them at deployment, and AGENTS.md contains enough context to operate. If critical role info is needed, re-read your instructions file manually (rare case — most tasks don't need it).
+**Note**: After `/clear`, your role instructions (`instructions/generated/codex-ashigaru.md`) are lost. However, `shutsujin_departure.sh` loaded them at deployment, and AGENTS.md contains enough context to operate. If critical role info is needed, re-read `instructions/generated/codex-ashigaru.md` manually (rare case — most tasks don't need it).
 
 ## Summary Generation (compaction)
 

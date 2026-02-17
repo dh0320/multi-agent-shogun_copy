@@ -142,79 +142,79 @@ load_adapter_with() {
 
 # --- 正常系 ---
 
-@test "get_cli_type: cliセクションなし → claude (後方互換)" {
+@test "get_cli_type: no cli section → claude (backward compat)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_cli_type "shogun")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: claude only設定 → claude" {
+@test "get_cli_type: claude only config → claude" {
     load_adapter_with "${TEST_TMP}/settings_claude_only.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: mixed設定 shogun → claude" {
+@test "get_cli_type: mixed config shogun → claude" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "shogun")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: mixed設定 ashigaru5 → codex" {
+@test "get_cli_type: mixed config ashigaru5 → codex" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "ashigaru5")
     [ "$result" = "codex" ]
 }
 
-@test "get_cli_type: mixed設定 ashigaru7 → copilot" {
+@test "get_cli_type: mixed config ashigaru7 → copilot" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "ashigaru7")
     [ "$result" = "copilot" ]
 }
 
-@test "get_cli_type: mixed設定 ashigaru1 → claude (個別設定)" {
+@test "get_cli_type: mixed config ashigaru1 → claude (individual config)" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: 文字列形式 ashigaru5 → codex" {
+@test "get_cli_type: string format ashigaru5 → codex" {
     load_adapter_with "${TEST_TMP}/settings_string_agents.yaml"
     result=$(get_cli_type "ashigaru5")
     [ "$result" = "codex" ]
 }
 
-@test "get_cli_type: 文字列形式 ashigaru7 → copilot" {
+@test "get_cli_type: string format ashigaru7 → copilot" {
     load_adapter_with "${TEST_TMP}/settings_string_agents.yaml"
     result=$(get_cli_type "ashigaru7")
     [ "$result" = "copilot" ]
 }
 
-@test "get_cli_type: kimi設定 ashigaru3 → kimi" {
+@test "get_cli_type: kimi config ashigaru3 → kimi" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(get_cli_type "ashigaru3")
     [ "$result" = "kimi" ]
 }
 
-@test "get_cli_type: kimi設定 ashigaru4 → kimi (モデル指定なし)" {
+@test "get_cli_type: kimi config ashigaru4 → kimi (no model specified)" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(get_cli_type "ashigaru4")
     [ "$result" = "kimi" ]
 }
 
-@test "get_cli_type: kimiデフォルト設定 → kimi" {
+@test "get_cli_type: kimi default config → kimi" {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "kimi" ]
 }
 
-@test "get_cli_type: 未定義agent → default継承" {
+@test "get_cli_type: undefined agent → inherits default" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(get_cli_type "ashigaru3")
     [ "$result" = "codex" ]
 }
 
-@test "get_cli_type: 空agent_id → claude" {
+@test "get_cli_type: empty agent_id → claude" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "")
     [ "$result" = "claude" ]
@@ -222,7 +222,7 @@ load_adapter_with() {
 
 # --- 全ashigaru パターン ---
 
-@test "get_cli_type: mixed設定 ashigaru1-8全パターン" {
+@test "get_cli_type: mixed config ashigaru1-8 all patterns" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     [ "$(get_cli_type ashigaru1)" = "claude" ]
     [ "$(get_cli_type ashigaru2)" = "claude" ]
@@ -236,31 +236,31 @@ load_adapter_with() {
 
 # --- エラー系 ---
 
-@test "get_cli_type: 不正CLI名 → claude フォールバック" {
+@test "get_cli_type: invalid CLI name → claude fallback" {
     load_adapter_with "${TEST_TMP}/settings_invalid_cli.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: 不正default → claude フォールバック" {
+@test "get_cli_type: invalid default → claude fallback" {
     load_adapter_with "${TEST_TMP}/settings_invalid_cli.yaml"
     result=$(get_cli_type "karo")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: 空YAMLファイル → claude" {
+@test "get_cli_type: empty YAML file → claude" {
     load_adapter_with "${TEST_TMP}/settings_empty.yaml"
     result=$(get_cli_type "shogun")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: YAML構文エラー → claude" {
+@test "get_cli_type: YAML syntax error → claude" {
     load_adapter_with "${TEST_TMP}/settings_broken.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "claude" ]
 }
 
-@test "get_cli_type: 存在しないファイル → claude" {
+@test "get_cli_type: missing file → claude" {
     load_adapter_with "/nonexistent/path/settings.yaml"
     result=$(get_cli_type "shogun")
     [ "$result" = "claude" ]
@@ -294,19 +294,19 @@ load_adapter_with() {
     [ "$result" = "kimi --yolo --model k2.5" ]
 }
 
-@test "build_cli_command: kimi (モデル指定なし) → kimi --yolo --model k2.5" {
+@test "build_cli_command: kimi (no model specified) → kimi --yolo --model k2.5" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru4")
     [ "$result" = "kimi --yolo --model k2.5" ]
 }
 
-@test "build_cli_command: cliセクションなし → claude フォールバック" {
+@test "build_cli_command: no cli section → claude fallback" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(build_cli_command "ashigaru1")
     [[ "$result" == claude*--dangerously-skip-permissions ]]
 }
 
-@test "build_cli_command: settings読取失敗 → claude フォールバック" {
+@test "build_cli_command: settings read failed → claude fallback" {
     load_adapter_with "/nonexistent/settings.yaml"
     result=$(build_cli_command "ashigaru1")
     [[ "$result" == claude*--dangerously-skip-permissions ]]
@@ -358,19 +358,19 @@ load_adapter_with() {
     [ "$result" = "instructions/generated/kimi-shogun.md" ]
 }
 
-@test "get_instruction_file: cli_type引数で明示指定 (codex)" {
+@test "get_instruction_file: cli_type arg explicit (codex)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_instruction_file "shogun" "codex")
     [ "$result" = "instructions/codex-shogun.md" ]
 }
 
-@test "get_instruction_file: cli_type引数で明示指定 (copilot)" {
+@test "get_instruction_file: cli_type arg explicit (copilot)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_instruction_file "karo" "copilot")
     [ "$result" = ".github/copilot-instructions-karo.md" ]
 }
 
-@test "get_instruction_file: 全CLI × 全role組み合わせ" {
+@test "get_instruction_file: all CLI × all role combinations" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # claude
     [ "$(get_instruction_file shogun claude)" = "instructions/shogun.md" ]
@@ -390,7 +390,7 @@ load_adapter_with() {
     [ "$(get_instruction_file ashigaru7 kimi)" = "instructions/generated/kimi-ashigaru.md" ]
 }
 
-@test "get_instruction_file: 不明なagent_id → 空文字 + return 1" {
+@test "get_instruction_file: unknown agent_id → empty string + return 1" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     run get_instruction_file "unknown_agent"
     [ "$status" -eq 1 ]
@@ -400,27 +400,27 @@ load_adapter_with() {
 # validate_cli_availability テスト
 # =============================================================================
 
-@test "validate_cli_availability: claude → 0 (インストール済み)" {
+@test "validate_cli_availability: claude → 0 (installed)" {
     command -v claude >/dev/null 2>&1 || skip "claude not installed (CI environment)"
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     run validate_cli_availability "claude"
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: 不正CLI名 → 1 + エラーメッセージ" {
+@test "validate_cli_availability: invalid CLI name → 1 + error message" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     run validate_cli_availability "invalid_type"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Unknown CLI type"* ]]
 }
 
-@test "validate_cli_availability: 空文字 → 1" {
+@test "validate_cli_availability: empty string → 1" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     run validate_cli_availability ""
     [ "$status" -eq 1 ]
 }
 
-@test "validate_cli_availability: codex mock (PATH操作)" {
+@test "validate_cli_availability: codex mock (PATH manipulation)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # モックcodexコマンドを作成
     mkdir -p "${TEST_TMP}/bin"
@@ -430,7 +430,7 @@ load_adapter_with() {
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: copilot mock (PATH操作)" {
+@test "validate_cli_availability: copilot mock (PATH manipulation)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/bin"
     echo '#!/bin/bash' > "${TEST_TMP}/bin/copilot"
@@ -439,7 +439,7 @@ load_adapter_with() {
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: kimi-cli mock (PATH操作)" {
+@test "validate_cli_availability: kimi-cli mock (PATH manipulation)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/bin"
     echo '#!/bin/bash' > "${TEST_TMP}/bin/kimi-cli"
@@ -448,7 +448,7 @@ load_adapter_with() {
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: kimi mock (PATH操作)" {
+@test "validate_cli_availability: kimi mock (PATH manipulation)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/bin"
     echo '#!/bin/bash' > "${TEST_TMP}/bin/kimi"
@@ -457,7 +457,7 @@ load_adapter_with() {
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: codex未インストール → 1 + エラーメッセージ" {
+@test "validate_cli_availability: codex not installed → 1 + error message" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # PATHからcodexを除外（空PATHは危険なのでminimal PATHを設定）
     PATH="/usr/bin:/bin" run validate_cli_availability "codex"
@@ -465,7 +465,7 @@ load_adapter_with() {
     [[ "$output" == *"Codex CLI not found"* ]]
 }
 
-@test "validate_cli_availability: kimi未インストール → 1 + エラーメッセージ" {
+@test "validate_cli_availability: kimi not installed → 1 + error message" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     PATH="/usr/bin:/bin" run validate_cli_availability "kimi"
     [ "$status" -eq 1 ]
@@ -476,73 +476,73 @@ load_adapter_with() {
 # get_agent_model テスト
 # =============================================================================
 
-@test "get_agent_model: cliセクションなし shogun → opus (デフォルト)" {
+@test "get_agent_model: no cli section shogun → opus (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "shogun")
     [ "$result" = "opus" ]
 }
 
-@test "get_agent_model: cliセクションなし karo → opus (デフォルト)" {
+@test "get_agent_model: no cli section karo → opus (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "opus" ]
 }
 
-@test "get_agent_model: cliセクションなし ashigaru1 → sonnet (デフォルト)" {
+@test "get_agent_model: no cli section ashigaru1 → sonnet (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "ashigaru1")
     [ "$result" = "sonnet" ]
 }
 
-@test "get_agent_model: cliセクションなし ashigaru5 → opus (デフォルト)" {
+@test "get_agent_model: no cli section ashigaru5 → opus (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "ashigaru5")
     [ "$result" = "opus" ]
 }
 
-@test "get_agent_model: YAML指定 ashigaru1 → haiku (オーバーライド)" {
+@test "get_agent_model: YAML specified ashigaru1 → haiku (override)" {
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(get_agent_model "ashigaru1")
     [ "$result" = "haiku" ]
 }
 
-@test "get_agent_model: modelsセクションから取得 karo → sonnet" {
+@test "get_agent_model: from models section karo → sonnet" {
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "sonnet" ]
 }
 
-@test "get_agent_model: codexエージェントのmodel ashigaru5 → gpt-5" {
+@test "get_agent_model: codex agent model ashigaru5 → gpt-5" {
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(get_agent_model "ashigaru5")
     [ "$result" = "gpt-5" ]
 }
 
-@test "get_agent_model: 未知agent → sonnet (デフォルト)" {
+@test "get_agent_model: unknown agent → sonnet (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "unknown_agent")
     [ "$result" = "sonnet" ]
 }
 
-@test "get_agent_model: kimi CLI ashigaru3 → k2.5 (YAML指定)" {
+@test "get_agent_model: kimi CLI ashigaru3 → k2.5 (YAML specified)" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(get_agent_model "ashigaru3")
     [ "$result" = "k2.5" ]
 }
 
-@test "get_agent_model: kimi CLI ashigaru4 → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI ashigaru4 → k2.5 (default)" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(get_agent_model "ashigaru4")
     [ "$result" = "k2.5" ]
 }
 
-@test "get_agent_model: kimi CLI shogun → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI shogun → k2.5 (default)" {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "shogun")
     [ "$result" = "k2.5" ]
 }
 
-@test "get_agent_model: kimi CLI karo → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI karo → k2.5 (default)" {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "k2.5" ]
