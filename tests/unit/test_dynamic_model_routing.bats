@@ -355,3 +355,125 @@ load_adapter_with() {
     result=$(_cli_adapter_read_yaml "bloom_routing" "off")
     [ "$result" = "off" ]
 }
+
+# =============================================================================
+# Phase 2: TC-DMR-100〜142 — Karo manual model_switch
+# =============================================================================
+
+# --- TC-DMR-100〜103: FR-05 model_switch判定 ---
+
+@test "TC-DMR-100: FR-05 switch不要 — bloom=3, model=spark" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    run needs_model_switch "gpt-5.3-codex-spark" 3
+    [ "$status" -eq 0 ]
+    [ "$output" = "no" ]
+}
+
+@test "TC-DMR-101: FR-05 switch必要 — bloom=4, model=spark" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    run needs_model_switch "gpt-5.3-codex-spark" 4
+    [ "$status" -eq 0 ]
+    [ "$output" = "yes" ]
+}
+
+@test "TC-DMR-102: FR-05 capability_tiers不在 → 判定スキップ" {
+    load_adapter_with "${TEST_TMP}/settings_no_tiers.yaml"
+    run needs_model_switch "gpt-5.3-codex-spark" 4
+    [ "$status" -eq 0 ]
+    [ "$output" = "skip" ]
+}
+
+@test "TC-DMR-103: FR-05 bloomフィールドなし → 判定スキップ" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    run needs_model_switch "gpt-5.3-codex-spark" ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "skip" ]
+}
+
+# --- TC-DMR-110〜113: FR-06 model_switch判定ロジック詳細 ---
+
+@test "TC-DMR-110: FR-06 同CLI内switch — codex spark→codex 5.3" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # bloom=4, current=spark(max3) → 推奨=codex5.3(max4), both chatgpt_pro
+    result=$(get_switch_recommendation "gpt-5.3-codex-spark" 4)
+    [[ "$result" == *"gpt-5.3"* ]]
+    [[ "$result" == *"same_cost_group"* ]]
+}
+
+@test "TC-DMR-111: FR-06 CLI跨ぎ — bloom=5, codex足軽" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # bloom=5, current=spark(chatgpt_pro) → 推奨=sonnet(claude_max) = cross_cost_group
+    result=$(get_switch_recommendation "gpt-5.3-codex-spark" 5)
+    [[ "$result" == *"claude-sonnet"* ]]
+    [[ "$result" == *"cross_cost_group"* ]]
+}
+
+@test "TC-DMR-112: FR-06 switch不要時は現モデル維持" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # bloom=3, current=spark(max3) → 十分、switchなし
+    result=$(get_switch_recommendation "gpt-5.3-codex-spark" 3)
+    [ "$result" = "no_switch" ]
+}
+
+@test "TC-DMR-113: FR-06 bloom=6でOpusに到達" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_switch_recommendation "gpt-5.3-codex-spark" 6)
+    [[ "$result" == *"claude-opus-4-6"* ]]
+}
+
+# --- TC-DMR-120〜121: NFR-02 応答速度 ---
+
+@test "TC-DMR-120: NFR-02 get_capability_tier応答速度 500ms以内" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    start=$(date +%s%N)
+    get_capability_tier "gpt-5.3-codex-spark" > /dev/null
+    end=$(date +%s%N)
+    elapsed_ms=$(( (end - start) / 1000000 ))
+    [ "$elapsed_ms" -lt 500 ]
+}
+
+@test "TC-DMR-121: NFR-02 get_recommended_model応答速度 500ms以内" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    start=$(date +%s%N)
+    get_recommended_model 4 > /dev/null
+    end=$(date +%s%N)
+    elapsed_ms=$(( (end - start) / 1000000 ))
+    [ "$elapsed_ms" -lt 500 ]
+}
+
+# --- TC-DMR-130〜131: NFR-03 CLI互換性 ---
+
+@test "TC-DMR-130: NFR-03 model_switchはClaude足軽のみ有効" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # codex足軽: switchは可能だがCLI跨ぎ注意
+    result=$(can_model_switch "codex")
+    [ "$result" = "limited" ]
+}
+
+@test "TC-DMR-131: NFR-03 Claude足軽はfull switch可能" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(can_model_switch "claude")
+    [ "$result" = "full" ]
+}
+
+# --- TC-DMR-140〜142: NFR-04 コスト最適化 ---
+
+@test "TC-DMR-140: NFR-04 L3にOpus不使用" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    result=$(get_recommended_model 3)
+    [ "$result" != "claude-opus-4-6" ]
+}
+
+@test "TC-DMR-141: NFR-04 chatgpt_pro優先" {
+    load_adapter_with "${TEST_TMP}/settings_cost_priority.yaml"
+    result=$(get_recommended_model 4)
+    cg=$(get_cost_group "$result")
+    [ "$cg" = "chatgpt_pro" ]
+}
+
+@test "TC-DMR-142: NFR-04 不要switch抑制" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    # current model can handle bloom level → no switch
+    run needs_model_switch "gpt-5.3" 4
+    [ "$output" = "no" ]
+}

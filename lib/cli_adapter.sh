@@ -428,3 +428,102 @@ except Exception:
 
     echo "$result"
 }
+
+# =============================================================================
+# Dynamic Model Routing — Issue #53 Phase 2
+# model_switch判定、推奨アクション、CLI互換性チェック
+# =============================================================================
+
+# needs_model_switch(current_model, bloom_level)
+# 現在モデルが指定Bloomレベルを処理できるか判定
+# 出力: "yes" (switch必要) | "no" (不要) | "skip" (判定不可)
+needs_model_switch() {
+    local current_model="$1"
+    local bloom_level="$2"
+
+    # bloom_level未指定 → 判定スキップ
+    if [[ -z "$bloom_level" || ! "$bloom_level" =~ ^[1-6]$ ]]; then
+        echo "skip"
+        return 0
+    fi
+
+    # capability_tiersの存在チェック
+    local max_bloom
+    max_bloom=$(get_capability_tier "$current_model")
+
+    # capability_tiersセクション不在チェック（全モデルが6を返す場合）
+    local has_tiers
+    has_tiers=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys
+try:
+    with open('${CLI_ADAPTER_SETTINGS}') as f:
+        cfg = yaml.safe_load(f) or {}
+    tiers = cfg.get('capability_tiers')
+    print('yes' if tiers and isinstance(tiers, dict) else 'no')
+except:
+    print('no')
+" 2>/dev/null)
+
+    if [[ "$has_tiers" != "yes" ]]; then
+        echo "skip"
+        return 0
+    fi
+
+    if [[ "$bloom_level" -gt "$max_bloom" ]]; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
+
+# get_switch_recommendation(current_model, bloom_level)
+# switch判定 + 推奨モデル + コストグループ遷移を返す
+# 出力: "no_switch" | "{recommended_model}:{transition_type}"
+#   transition_type: "same_cost_group" | "cross_cost_group"
+get_switch_recommendation() {
+    local current_model="$1"
+    local bloom_level="$2"
+
+    local switch_needed
+    switch_needed=$(needs_model_switch "$current_model" "$bloom_level")
+
+    if [[ "$switch_needed" != "yes" ]]; then
+        echo "no_switch"
+        return 0
+    fi
+
+    local recommended
+    recommended=$(get_recommended_model "$bloom_level")
+
+    if [[ -z "$recommended" ]]; then
+        echo "no_switch"
+        return 0
+    fi
+
+    local current_cg recommended_cg transition
+    current_cg=$(get_cost_group "$current_model")
+    recommended_cg=$(get_cost_group "$recommended")
+
+    if [[ "$current_cg" = "$recommended_cg" ]]; then
+        transition="same_cost_group"
+    else
+        transition="cross_cost_group"
+    fi
+
+    echo "${recommended}:${transition}"
+}
+
+# can_model_switch(cli_type)
+# 指定CLI種別でmodel_switchが可能か判定
+# 出力: "full" (Claude: /modelコマンド対応) | "limited" (Codex: 同CLI内のみ) | "none"
+can_model_switch() {
+    local cli_type="$1"
+
+    case "$cli_type" in
+        claude)  echo "full" ;;
+        codex)   echo "limited" ;;
+        copilot) echo "none" ;;
+        kimi)    echo "none" ;;
+        *)       echo "none" ;;
+    esac
+}
