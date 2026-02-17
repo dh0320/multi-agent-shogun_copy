@@ -57,13 +57,20 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
             exit 1
         fi
         WATCH_BACKEND="fswatch"
+    elif command -v inotifywait &>/dev/null; then
+        # Linux with inotifywait available
+        WATCH_BACKEND="inotifywait"
     else
-        # Linux: use inotifywait
-        if ! command -v inotifywait &>/dev/null; then
-            echo "[inbox_watcher] ERROR: inotifywait not found. Install: sudo apt install inotify-tools" >&2
+        # Fallback: try fswatch on non-macOS systems (e.g., Linux with fswatch)
+        if command -v fswatch &>/dev/null; then
+            echo "[inbox_watcher] WARNING: inotifywait not found, falling back to fswatch" >&2
+            WATCH_BACKEND="fswatch"
+        else
+            echo "[inbox_watcher] ERROR: Neither inotifywait nor fswatch found." >&2
+            echo "  Linux: sudo apt install inotify-tools" >&2
+            echo "  macOS: brew install fswatch" >&2
             exit 1
         fi
-        WATCH_BACKEND="inotifywait"
     fi
     echo "[$(date)] File watch backend: $WATCH_BACKEND" >&2
 fi
