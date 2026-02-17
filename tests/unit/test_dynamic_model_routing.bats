@@ -619,3 +619,56 @@ load_adapter_with() {
     grep -q "bloom_routing" /tmp/dmr_stderr_test || grep -q "invalid" /tmp/dmr_stderr_test
     rm -f /tmp/dmr_stderr_test
 }
+
+# =============================================================================
+# Phase 4: TC-DMR-300〜303 — Full auto-selection (品質フィードバック)
+# =============================================================================
+
+@test "TC-DMR-300: FR-10 履歴追記 — model_performance.yamlに1行追記" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    local perf_file="${TEST_TMP}/model_performance.yaml"
+    # 初回追記
+    run append_model_performance "$perf_file" "subtask_001" "seo_article" 3 "gpt-5.3-codex-spark" "pass" 0.85
+    [ "$status" -eq 0 ]
+    # ファイルが生成され、1件のhistoryエントリが存在
+    run "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml
+with open('${perf_file}') as f:
+    doc = yaml.safe_load(f)
+print(len(doc.get('history', [])))
+"
+    [ "$output" = "1" ]
+}
+
+@test "TC-DMR-301: FR-10 履歴読取 — task_type×bloom_level別の集計" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    local perf_file="${TEST_TMP}/model_performance.yaml"
+    # 3件追記
+    append_model_performance "$perf_file" "subtask_001" "seo_article" 3 "gpt-5.3-codex-spark" "pass" 0.90
+    append_model_performance "$perf_file" "subtask_002" "seo_article" 3 "gpt-5.3-codex-spark" "pass" 0.85
+    append_model_performance "$perf_file" "subtask_003" "seo_article" 3 "gpt-5.3-codex-spark" "fail" 0.40
+    # 集計: seo_article × bloom3 → 3件
+    result=$(get_model_performance_summary "$perf_file" "seo_article" 3)
+    [[ "$result" == *"total:3"* ]]
+    [[ "$result" == *"pass:2"* ]]
+}
+
+@test "TC-DMR-302: FR-10 空ファイル — model_performance.yaml不在でもエラーなし" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    local perf_file="${TEST_TMP}/nonexistent_performance.yaml"
+    run get_model_performance_summary "$perf_file" "seo_article" 3
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"total:0"* ]]
+}
+
+@test "TC-DMR-303: FR-10 適合度算出 — pass率が算出可能" {
+    load_adapter_with "${TEST_TMP}/settings_with_tiers.yaml"
+    local perf_file="${TEST_TMP}/model_performance.yaml"
+    # 4件: 3 pass, 1 fail → pass_rate=0.75
+    append_model_performance "$perf_file" "subtask_001" "bugfix" 4 "gpt-5.3" "pass" 0.90
+    append_model_performance "$perf_file" "subtask_002" "bugfix" 4 "gpt-5.3" "pass" 0.85
+    append_model_performance "$perf_file" "subtask_003" "bugfix" 4 "gpt-5.3" "pass" 0.80
+    append_model_performance "$perf_file" "subtask_004" "bugfix" 4 "gpt-5.3" "fail" 0.30
+    result=$(get_model_performance_summary "$perf_file" "bugfix" 4)
+    [[ "$result" == *"pass_rate:0.75"* ]]
+}

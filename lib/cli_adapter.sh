@@ -670,3 +670,98 @@ should_trigger_bloom_analysis() {
             ;;
     esac
 }
+
+# =============================================================================
+# Dynamic Model Routing — Issue #53 Phase 4
+# 品質フィードバック蓄積・集計
+# =============================================================================
+
+# append_model_performance(yaml_path, task_id, task_type, bloom_level, model_used, qc_result, qc_score)
+# model_performance.yamlにQC結果を1行追記
+# 出力: なし。exit code 0=成功, 1=失敗
+append_model_performance() {
+    local yaml_path="$1"
+    local task_id="$2"
+    local task_type="$3"
+    local bloom_level="$4"
+    local model_used="$5"
+    local qc_result="$6"
+    local qc_score="$7"
+
+    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys, os
+from datetime import datetime, timezone
+
+yaml_path = '${yaml_path}'
+entry = {
+    'task_id': '${task_id}',
+    'task_type': '${task_type}',
+    'bloom_level': int('${bloom_level}'),
+    'model_used': '${model_used}',
+    'qc_result': '${qc_result}',
+    'qc_score': float('${qc_score}'),
+    'timestamp': datetime.now(timezone.utc).isoformat()
+}
+
+try:
+    if os.path.exists(yaml_path):
+        with open(yaml_path) as f:
+            doc = yaml.safe_load(f) or {}
+    else:
+        doc = {}
+
+    if 'history' not in doc or not isinstance(doc.get('history'), list):
+        doc['history'] = []
+
+    doc['history'].append(entry)
+
+    with open(yaml_path, 'w') as f:
+        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True)
+except Exception as e:
+    print(f'error: {e}', file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null
+}
+
+# get_model_performance_summary(yaml_path, task_type, bloom_level)
+# task_type×bloom_level別の集計を返す
+# 出力: "total:N pass:M fail:F pass_rate:R"
+get_model_performance_summary() {
+    local yaml_path="$1"
+    local task_type="$2"
+    local bloom_level="$3"
+
+    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, sys, os
+
+yaml_path = '${yaml_path}'
+task_type = '${task_type}'
+bloom_level = int('${bloom_level}')
+
+try:
+    if not os.path.exists(yaml_path):
+        print('total:0 pass:0 fail:0 pass_rate:0.00')
+        sys.exit(0)
+
+    with open(yaml_path) as f:
+        doc = yaml.safe_load(f) or {}
+
+    history = doc.get('history', [])
+    filtered = [h for h in history
+                if h.get('task_type') == task_type
+                and h.get('bloom_level') == bloom_level]
+
+    total = len(filtered)
+    if total == 0:
+        print('total:0 pass:0 fail:0 pass_rate:0.00')
+        sys.exit(0)
+
+    pass_count = sum(1 for h in filtered if h.get('qc_result') == 'pass')
+    fail_count = total - pass_count
+    pass_rate = round(pass_count / total, 2)
+
+    print(f'total:{total} pass:{pass_count} fail:{fail_count} pass_rate:{pass_rate}')
+except Exception as e:
+    print('total:0 pass:0 fail:0 pass_rate:0.00')
+" 2>/dev/null
+}
