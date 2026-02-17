@@ -57,16 +57,33 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
             exit 1
         fi
         WATCH_BACKEND="fswatch"
+    elif command -v inotifywait &>/dev/null; then
+        # Linux with inotifywait available
+        WATCH_BACKEND="inotifywait"
     else
-        # Linux: use inotifywait
-        if ! command -v inotifywait &>/dev/null; then
-            echo "[inbox_watcher] ERROR: inotifywait not found. Install: sudo apt install inotify-tools" >&2
+        # Fallback: try fswatch on non-macOS systems (e.g., Linux with fswatch)
+        if command -v fswatch &>/dev/null; then
+            echo "[inbox_watcher] WARNING: inotifywait not found, falling back to fswatch" >&2
+            WATCH_BACKEND="fswatch"
+        else
+            echo "[inbox_watcher] ERROR: Neither inotifywait nor fswatch found." >&2
+            echo "  Linux: sudo apt install inotify-tools" >&2
+            echo "  macOS: brew install fswatch" >&2
             exit 1
         fi
-        WATCH_BACKEND="inotifywait"
     fi
     echo "[$(date)] File watch backend: $WATCH_BACKEND" >&2
 fi
+
+# ─── Python command resolution ───
+# Prefer .venv/bin/python3 if available, fallback to system python3
+get_python_cmd() {
+    if [[ -x "$SCRIPT_DIR/.venv/bin/python3" ]]; then
+        echo "$SCRIPT_DIR/.venv/bin/python3"
+    else
+        echo "python3"
+    fi
+}
 
 # ─── timeout command compatibility wrapper (macOS support) ───
 if ! command -v timeout &>/dev/null; then
@@ -242,9 +259,11 @@ normalize_special_command() {
 }
 
 enqueue_recovery_task_assigned() {
+    local python_cmd
+    python_cmd="$(get_python_cmd)"
     (
         flock -x 200
-        INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
+        INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" "$python_cmd" - << 'PY'
 import datetime
 import os
 import uuid
@@ -313,7 +332,9 @@ no_idle_full_read() {
 
 # summary-first: unread_count fast-path before full read
 get_unread_count_fast() {
-    INBOX_PATH="$INBOX" "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
+    local python_cmd
+    python_cmd="$(get_python_cmd)"
+    INBOX_PATH="$INBOX" "$python_cmd" - << 'PY'
 import json
 import os
 import yaml
@@ -334,9 +355,11 @@ PY
 # Returns JSON lines: {"count": N, "has_special": true/false, "specials": [...]}
 # Test anchor for bats awk pattern: get_unread_info\\(\\)
 get_unread_info() {
+    local python_cmd
+    python_cmd="$(get_python_cmd)"
     (
         flock -x 200
-        INBOX_PATH="$INBOX" "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
+        INBOX_PATH="$INBOX" "$python_cmd" - << 'PY'
 import json
 import os
 import yaml
@@ -548,6 +571,15 @@ pane_is_active() {
     [ "$active" = "1" ]
 }
 
+# ─── Check if tmux session has attached client ───
+session_has_client() {
+    local session_name
+    session_name=$(echo "$PANE_TARGET" | cut -d':' -f1)
+    local clients
+    clients=$(timeout 2 tmux list-clients -t "$session_name" 2>/dev/null || true)
+    [ -n "$clients" ]
+}
+
 # ─── Send wake-up nudge ───
 # Layered approach:
 #   1. If agent has active inotifywait self-watch → skip (agent wakes itself)
@@ -578,10 +610,11 @@ send_wakeup() {
         return 0
     fi
 
-    # Shogun: if the pane is focused, never inject keys (it can clobber the Lord's input).
-    # Instead, show a tmux message. If not focused, we can safely send the normal nudge.
-    if [ "$AGENT_ID" = "shogun" ] && pane_is_active; then
-        echo "[$(date)] [DISPLAY] shogun pane is active — showing nudge: inbox${unread_count}" >&2
+    # Shogun: if the pane is focused AND a client is attached, never inject keys
+    # (it can clobber the Lord's input). Instead, show a tmux message.
+    # If detached or not focused, we can safely send the normal nudge.
+    if [ "$AGENT_ID" = "shogun" ] && pane_is_active && session_has_client; then
+        echo "[$(date)] [DISPLAY] shogun pane is active with attached client — showing nudge: inbox${unread_count}" >&2
         timeout 2 tmux display-message -t "$PANE_TARGET" -d 5000 "inbox${unread_count}" 2>/dev/null || true
         return 0
     fi
@@ -663,13 +696,15 @@ send_wakeup_with_escape() {
 # ─── Process cycle ───
 process_unread() {
     local trigger="${1:-event}"
+    local python_cmd
+    python_cmd="$(get_python_cmd)"
 
     # summary-first: unread_count fast-path (Phase 2/3 optimization)
     # unread_count fast-path lets us skip expensive full reads when idle.
     local fast_info
     fast_info=$(get_unread_count_fast)
     local fast_count
-    fast_count=$(echo "$fast_info" | "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
+    fast_count=$(echo "$fast_info" | "$python_cmd" -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
 
     if no_idle_full_read "$trigger" && [ "$fast_count" -eq 0 ] 2>/dev/null; then
         # no_idle_full_read guard: unread=0 and timeout path → no full inbox read
@@ -698,7 +733,7 @@ process_unread() {
 
     # Handle special CLI commands first (/clear, /model)
     local specials
-    specials=$(echo "$info" | "$SCRIPT_DIR/.venv/bin/python3" -c "
+    specials=$(echo "$info" | "$python_cmd" -c "
 import sys, json
 data = json.load(sys.stdin)
 for s in data.get('specials', []):
@@ -729,15 +764,27 @@ for s in data.get('specials', []):
             echo "[$(date)] [AUTO-RECOVERY] queued task_assigned for $AGENT_ID ($recovery_id)" >&2
         fi
         info=$(get_unread_info)
+        
+        # Send a startup prompt to wake the agent after /new or /clear.
+        # This ensures the agent reads the inbox immediately after context reset.
+        local effective_cli
+        effective_cli=$(get_effective_cli_type)
+        if [[ "$effective_cli" == "codex" ]]; then
+            echo "[$(date)] [STARTUP-PROMPT] Sending session start prompt to $AGENT_ID after /new" >&2
+            sleep 1
+            timeout 5 tmux send-keys -t "$PANE_TARGET" "Session Start" 2>/dev/null || true
+            sleep 0.3
+            timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
+        fi
     fi
 
     # Send wake-up nudge for normal messages (with escalation)
     local normal_count
-    normal_count=$(echo "$info" | "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
+    normal_count=$(echo "$info" | "$python_cmd" -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
 
     # Check if unread messages include task_assigned (for context reset)
     local has_task_assigned
-    has_task_assigned=$(echo "$info" | "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(1 if json.load(sys.stdin).get('has_task_assigned') else 0)" 2>/dev/null)
+    has_task_assigned=$(echo "$info" | "$python_cmd" -c "import sys,json; print(1 if json.load(sys.stdin).get('has_task_assigned') else 0)" 2>/dev/null)
 
     if [ "$normal_count" -gt 0 ] 2>/dev/null; then
         local now

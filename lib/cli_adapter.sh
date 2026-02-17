@@ -19,13 +19,26 @@ CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi agent"
 
 # --- 内部ヘルパー ---
 
+# _cli_adapter_get_python
+# .venv/bin/python3があればそれを使い、なければシステムのpython3を使う
+_cli_adapter_get_python() {
+    if [[ -x "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" ]]; then
+        echo "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3"
+    else
+        echo "python3"
+    fi
+}
+
 # _cli_adapter_read_yaml key [fallback]
 # python3でsettings.yamlから値を読み取る
 _cli_adapter_read_yaml() {
     local key_path="$1"
     local fallback="${2:-}"
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    local python_cmd
+    python_cmd="$(_cli_adapter_get_python)"
+    
+    result=$("$python_cmd" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -76,7 +89,10 @@ get_cli_type() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    local python_cmd
+    python_cmd="$(_cli_adapter_get_python)"
+    
+    result=$("$python_cmd" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:

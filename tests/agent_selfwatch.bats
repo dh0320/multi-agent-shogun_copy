@@ -45,6 +45,10 @@ INBOX="$TEST_INBOX"
 LOCKFILE="${INBOX}.lock"
 SCRIPT_DIR="$PROJECT_ROOT"
 
+# Use system python3 for tests (assume .venv/bin/python3 not available)
+export TEST_PYTHON3
+TEST_PYTHON3="$(command -v python3)"
+
 tmux() {
     echo "tmux $*" >> "$MOCK_LOG"
     if echo "$*" | grep -q "capture-pane"; then
@@ -59,11 +63,61 @@ tmux() {
 
 timeout() { shift; "$@"; }
 sleep() { :; }
-pgrep() { return "${MOCK_PGREP_RC:-1}"; }
+pgrep() { return "${MOCK_PGREG_RC:-1}"; }
 export -f tmux timeout sleep pgrep
 
 export __INBOX_WATCHER_TESTING__=1
 source "$WATCHER_SCRIPT"
+
+# Override get_unread_info to use system python3 instead of .venv
+get_unread_info() {
+    (
+        flock -x 200
+        INBOX_PATH="$INBOX" "$TEST_PYTHON3" - << 'PY'
+import json
+import os
+import yaml
+
+inbox = os.environ.get("INBOX_PATH", "")
+try:
+    with open(inbox, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    messages = data.get("messages", []) or []
+    unread = [m for m in messages if not m.get("read", False)]
+    special_types = ("clear_command", "model_switch")
+    specials = [m for m in unread if m.get("type") in special_types]
+
+    if specials:
+        for m in messages:
+            if not m.get("read", False) and m.get("type") in special_types:
+                m["read"] = True
+
+        tmp_path = f"{inbox}.tmp.{os.getpid()}"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                data,
+                f,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+            )
+        os.replace(tmp_path, inbox)
+
+    normal_count = len(unread) - len(specials)
+    normal_msgs = [m for m in unread if m.get("type") not in special_types]
+    has_task_assigned = any(m.get("type") == "task_assigned" for m in normal_msgs)
+    payload = {
+        "count": normal_count,
+        "has_task_assigned": has_task_assigned,
+        "specials": [{"type": m.get("type", ""), "content": m.get("content", "")} for m in specials],
+    }
+    print(json.dumps(payload))
+except Exception:
+    print(json.dumps({"count": 0, "specials": []}))
+PY
+    ) 200>"$LOCKFILE" 2>/dev/null
+}
 HARNESS
     chmod +x "$TEST_HARNESS"
 }
