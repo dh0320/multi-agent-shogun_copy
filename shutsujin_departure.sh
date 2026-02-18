@@ -604,14 +604,12 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 fi
                 ;;
             codex)
-                # settings.yamlのmodelを優先表示、なければconfig.tomlのeffort
+                # settings.yaml の model を優先表示。未指定時は汎用 codex 表示。
                 _codex_model=$(get_agent_model "$_agent")
                 if [[ -n "$_codex_model" ]]; then
                     MODEL_NAMES[$i]="codex/${_codex_model}"
                 else
-                    _codex_effort=$(grep '^model_reasoning_effort' ~/.codex/config.toml 2>/dev/null | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-                    _codex_effort=${_codex_effort:-high}
-                    MODEL_NAMES[$i]="codex/${_codex_effort}"
+                    MODEL_NAMES[$i]="codex"
                 fi
                 ;;
             copilot)
