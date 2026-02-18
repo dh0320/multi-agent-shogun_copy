@@ -604,16 +604,13 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 fi
                 ;;
             codex)
-                # settings.yamlのmodel/effortを表示（effort未指定ならconfig.tomlの値を使用）
+                # settings.yamlのmodelを優先表示、なければconfig.tomlのeffort
                 _codex_model=$(get_agent_model "$_agent")
-                _codex_effort=$(get_codex_reasoning_effort "$_agent")
-                if [[ -z "$_codex_effort" ]]; then
+                if [[ -n "$_codex_model" ]]; then
+                    MODEL_NAMES[$i]="codex/${_codex_model}"
+                else
                     _codex_effort=$(grep '^model_reasoning_effort' ~/.codex/config.toml 2>/dev/null | head -1 | sed 's/.*= *"\(.*\)"/\1/')
                     _codex_effort=${_codex_effort:-high}
-                fi
-                if [[ -n "$_codex_model" ]]; then
-                    MODEL_NAMES[$i]="codex/${_codex_model}:${_codex_effort}"
-                else
                     MODEL_NAMES[$i]="codex/${_codex_effort}"
                 fi
                 ;;

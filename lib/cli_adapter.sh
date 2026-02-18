@@ -8,7 +8,6 @@
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
 #   get_agent_model(agent_id)               → "opus" | "sonnet" | "haiku" | "k2.5"
-#   get_codex_reasoning_effort(agent_id)    → "low" | "medium" | "high" | "xhigh" | ""
 #   get_startup_prompt(agent_id)            → 初期プロンプト文字列 or ""
 
 # プロジェクトルートを基準にsettings.yamlのパスを解決
@@ -144,15 +143,6 @@ build_cli_command() {
             if [[ -n "$model" ]]; then
                 cmd="$cmd --model $model"
             fi
-            local effort
-            effort=$(get_codex_reasoning_effort "$agent_id")
-            if [[ -n "$effort" ]]; then
-                if [[ "$effort" =~ ^[A-Za-z0-9._-]+$ ]]; then
-                    cmd="$cmd -c 'model_reasoning_effort=\"${effort}\"'"
-                else
-                    echo "[WARN] Invalid codex model_reasoning_effort '$effort' for agent '$agent_id' (allowed: A-Za-z0-9._-). Ignoring." >&2
-                fi
-            fi
             cmd="$cmd --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
             echo "$cmd"
             ;;
@@ -284,27 +274,6 @@ get_agent_model() {
             esac
             ;;
     esac
-}
-
-# get_codex_reasoning_effort(agent_id)
-# settings.yamlからCodexのmodel_reasoning_effort上書き値を読む（未指定なら空文字）
-# 優先順:
-#   1) cli.agents.<id>.codex.model_reasoning_effort
-#   2) cli.agents.<id>.model_reasoning_effort (互換)
-#   3) cli.codex.model_reasoning_effort
-get_codex_reasoning_effort() {
-    local agent_id="$1"
-    local effort
-
-    effort=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.codex.model_reasoning_effort" "")
-    if [[ -z "$effort" ]]; then
-        effort=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model_reasoning_effort" "")
-    fi
-    if [[ -z "$effort" ]]; then
-        effort=$(_cli_adapter_read_yaml "cli.codex.model_reasoning_effort" "")
-    fi
-
-    echo "$effort"
 }
 
 # get_startup_prompt(agent_id)
