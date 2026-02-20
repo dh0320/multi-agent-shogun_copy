@@ -1,0 +1,10 @@
+thresholds:
+  compaction_per_session:
+    warn: 3
+    critical: 5
+  context_size_kb:
+    warn: 100
+    critical: 150
+  task_completion_minutes:
+    warn: 60
+    critical: 120

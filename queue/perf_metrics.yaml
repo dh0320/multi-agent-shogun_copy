@@ -1,0 +1,22 @@
+snapshots:
+  - date: "2026-02-20"
+    collected_at: "2026-02-20T21:53:28+0900"
+    context_sizes:
+      shogun_instructions_kb: 15.0
+      karo_instructions_kb: 16.6
+      gunshi_instructions_kb: 17.4
+      ashigaru_instructions_kb: 10.7
+      claude_md_kb: 14.1
+      memory_md_kb: 8.9
+      total_kb: 82.7
+    task_metrics:
+      cmds_completed_24h: 19
+      avg_completion_minutes: 0
+      max_completion_minutes: 0
+    compaction_counts:
+      shogun: 0
+      karo: 4
+      ashigaru1: 0
+      ashigaru2: 30
+      gunshi: 0
+    alerts: []
