@@ -69,6 +69,11 @@
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
+!config/perf_thresholds.yaml
+
+# Queue (runtime data files — initial state only)
+!queue/
+!queue/perf_metrics.yaml
 
 # Templates
 !templates/
@@ -96,6 +101,8 @@
 !scripts/stop_hook_inbox.sh
 !scripts/agent_status.sh
 !scripts/ratelimit_check.sh
+!scripts/perf_collect.sh
+!scripts/slack_post.sh
 
 
 # SayTask (sample template only, not actual data)
