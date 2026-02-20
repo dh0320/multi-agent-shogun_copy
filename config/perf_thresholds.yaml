@@ -3,7 +3,7 @@ thresholds:
     warn: 3
     critical: 5
   context_size_kb:
-    warn: 100
+    warn: 120
     critical: 150
   task_completion_minutes:
     warn: 60

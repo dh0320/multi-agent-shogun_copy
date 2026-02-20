@@ -51,6 +51,25 @@ ASHIGARU_KB="$(_file_kb "$SCRIPT_DIR/instructions/ashigaru.md")"
 CLAUDE_MD_KB="$(_file_kb "$SCRIPT_DIR/CLAUDE.md")"
 MEMORY_MD_KB="$(_file_kb "$HOME/.claude/projects/-Users-idehara-repos-multi-agent-shogun/memory/MEMORY.md")"
 
+_to_unix_epoch() {
+    local timestamp="$1"
+    local cleaned
+
+    cleaned="${timestamp%%+*}"
+    cleaned="${cleaned%%Z*}"
+    cleaned="${cleaned#\"}"
+    cleaned="${cleaned%\"}"
+    cleaned="${cleaned#\'}"
+    cleaned="${cleaned%\'}"
+
+    if [ -z "$cleaned" ]; then
+        echo ""
+        return 1
+    fi
+
+    date -j -f "%Y-%m-%dT%H:%M:%S" "$cleaned" "+%s" 2>/dev/null
+}
+
 # ============================================================
 # b) タスク完了時間（shogun_to_karo.yamlのstatus:doneからtimestampベース概算）
 # ============================================================
@@ -75,10 +94,7 @@ if [ -f "$SHOGUN_KARO_YAML" ]; then
     EPOCH_LIST=""
     while IFS= read -r ts; do
         [ -z "$ts" ] && continue
-        # タイムゾーン除去（macOS dateは+09:00形式を扱えない）
-        ts_clean="${ts%%+*}"
-        ts_clean="${ts_clean%%Z*}"
-        ep=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$ts_clean" "+%s" 2>/dev/null) || continue
+        ep=$(_to_unix_epoch "$ts") || continue
         if [ "$ep" -ge "$CUTOFF_EPOCH" ]; then
             EPOCH_LIST="${EPOCH_LIST}${ep} "
             CMDS_COMPLETED_24H=$(( CMDS_COMPLETED_24H + 1 ))
@@ -118,28 +134,66 @@ fi
 # c) コンパクション頻度（全pane動的収集、bash 3.2互換）
 # ============================================================
 
-# エージェント名とカウントをスペース区切りで並行管理
-AGENT_NAMES_LIST=""
-AGENT_COUNTS_LIST=""
-
-while IFS=' ' read -r pane_id agent_id; do
-    [ -z "$agent_id" ] && continue
-    count=0
-    if tmux_output=$(tmux capture-pane -t "$pane_id" -p -S -1000 2>/dev/null); then
-        # grep -c が 0件(exit 1)の場合、|| count=0 でフォールバック（二重出力を防ぐ）
-        count=$(echo "$tmux_output" | grep -ciE "compressed|compaction|context limit|context was compressed" 2>/dev/null) || count=0
-    fi
-    AGENT_NAMES_LIST="${AGENT_NAMES_LIST}${agent_id} "
-    AGENT_COUNTS_LIST="${AGENT_COUNTS_LIST}${count} "
-done < <(tmux list-panes -a -F '#{pane_id} #{@agent_id}' 2>/dev/null || true)
-
-# 並行配列に変換（空リスト対応）
 AGENT_NAMES_ARR=()
 AGENT_COUNTS_ARR=()
-if [ -n "$AGENT_NAMES_LIST" ]; then
-    read -ra AGENT_NAMES_ARR <<< "$AGENT_NAMES_LIST"
-    read -ra AGENT_COUNTS_ARR <<< "$AGENT_COUNTS_LIST"
-fi
+
+_find_agent_index() {
+    local target_agent="$1"
+    local i
+
+    for i in "${!AGENT_NAMES_ARR[@]}"; do
+        if [ "${AGENT_NAMES_ARR[$i]}" = "$target_agent" ]; then
+            printf '%s' "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+_normalize_agent_from_pane_title() {
+    local title="$1"
+
+    case "$title" in
+        *shogun*)
+            echo "shogun"
+            ;;
+        *karo*)
+            echo "karo"
+            ;;
+        *gunshi*)
+            echo "gunshi"
+            ;;
+        *ashigaru*)
+            echo "$title"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+while IFS='|' read -r pane_id agent_id pane_title; do
+    normalized_agent="$(printf '%s' "$agent_id" | tr -d '[:space:]')"
+    if [ -z "$normalized_agent" ]; then
+        normalized_agent="$(_normalize_agent_from_pane_title "$pane_title")"
+    fi
+    if [ -z "$normalized_agent" ]; then
+        continue
+    fi
+
+    count=0
+    if tmux_output=$(tmux capture-pane -t "$pane_id" -p -S -1000 2>/dev/null); then
+        count=$(echo "$tmux_output" | grep -ciE "compressed|compaction|context limit|context was compressed" 2>/dev/null) || count=0
+    fi
+
+    idx=$(_find_agent_index "$normalized_agent" || true)
+    if [ -n "$idx" ]; then
+        AGENT_COUNTS_ARR[idx]=$(( AGENT_COUNTS_ARR[idx] + count ))
+    else
+        AGENT_NAMES_ARR+=("$normalized_agent")
+        AGENT_COUNTS_ARR+=("$count")
+    fi
+done < <(tmux list-panes -a -F '#{pane_id}|#{@agent_id}|#{pane_title}' 2>/dev/null || true)
 
 # ============================================================
 # d) エージェント稼働状態（定義のみ。現在は収集対象外）
@@ -161,8 +215,8 @@ _agent_status() {
 # アラート生成（複数アラートを配列として蓄積）
 # ============================================================
 
-ALERTS_YAML_LINES=""   # YAML list形式で蓄積（実際の改行を使用）
-ALERT_MESSAGES=""
+ALERTS_YAML_ENTRIES=()   # YAML list形式で行ごとに蓄積
+ALERT_MESSAGES=()
 ALERT_COUNT=0
 
 _add_alert() {
@@ -171,14 +225,14 @@ _add_alert() {
     local value="$3"
     local threshold="$4"
     local agent="${5:-all}"
-    ALERT_MESSAGES="${ALERT_MESSAGES}⚠️ パフォーマンス警告: ${metric} が閾値超過 現在値: ${value} / 閾値: ${threshold} 対象: ${agent}
-"
-    ALERTS_YAML_LINES="${ALERTS_YAML_LINES}    - level: ${level}
-      metric: ${metric}
-      value: ${value}
-      threshold: ${threshold}
-      agent: ${agent}
-"
+    ALERT_MESSAGES+=("⚔️ 陣中見回り報告: ${metric} が許容を超えておりまする。現在値: ${value}（閾値: ${threshold}）対象: ${agent}")
+    ALERTS_YAML_ENTRIES+=(
+        "    - level: ${level}"
+        "      metric: ${metric}"
+        "      value: ${value}"
+        "      threshold: ${threshold}"
+        "      agent: ${agent}"
+    )
     ALERT_COUNT=$(( ALERT_COUNT + 1 ))
 }
 
@@ -217,11 +271,11 @@ fi
 
 SLACK_POST="$SCRIPT_DIR/scripts/slack_post.sh"
 if [ "$ALERT_COUNT" -gt 0 ] && [ -f "$SLACK_POST" ]; then
-    while IFS= read -r alert_line; do
+    for alert_line in "${ALERT_MESSAGES[@]}"; do
         if [ -n "$alert_line" ]; then
-            bash "$SLACK_POST" --channel "C048QLDLBF0" "$alert_line" || true
+            bash "$SLACK_POST" "$alert_line" || true
         fi
-    done <<< "$ALERT_MESSAGES"
+    done
 fi
 
 # ============================================================
@@ -240,11 +294,14 @@ else
 fi
 
 # alerts セクションを動的生成（複数アラート対応）
-if [ -z "$ALERTS_YAML_LINES" ]; then
+if [ "${#ALERTS_YAML_ENTRIES[@]}" -eq 0 ]; then
     ALERTS_SECTION="    alerts: []"
 else
-    ALERTS_SECTION="    alerts:
-${ALERTS_YAML_LINES}"
+    ALERTS_SECTION="    alerts:"
+    for alert_yaml_line in "${ALERTS_YAML_ENTRIES[@]}"; do
+        ALERTS_SECTION="${ALERTS_SECTION}
+${alert_yaml_line}"
+    done
 fi
 
 SNAPSHOT="  - date: \"${DATE_TODAY}\"

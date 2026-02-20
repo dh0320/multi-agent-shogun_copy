@@ -20,3 +20,59 @@ snapshots:
       ashigaru2: 30
       gunshi: 0
     alerts: []
+  - date: "2026-02-20"
+    collected_at: "2026-02-20T22:18:40+0900"
+    context_sizes:
+      shogun_instructions_kb: 14.9
+      karo_instructions_kb: 36.7
+      gunshi_instructions_kb: 17.1
+      ashigaru_instructions_kb: 10.7
+      claude_md_kb: 14.7
+      memory_md_kb: 8.9
+      total_kb: 103.0
+    task_metrics:
+      cmds_completed_24h: 0
+      avg_completion_minutes: 0
+      max_completion_minutes: 0
+    compaction_counts:
+      karo: 4
+      gunshi: 0
+      ashigaru1: 0
+      metsuke: 0
+      ashigaru2: 21
+      shogun: 0
+    alerts:
+    - level: warn
+      metric: context_size_kb
+      value: 103.0KB
+      threshold: 100KB
+      agent: 全エージェント共通
+
+  - date: "2026-02-20"
+    collected_at: "2026-02-20T22:21:20+0900"
+    context_sizes:
+      shogun_instructions_kb: 14.9
+      karo_instructions_kb: 36.7
+      gunshi_instructions_kb: 17.1
+      ashigaru_instructions_kb: 10.7
+      claude_md_kb: 14.7
+      memory_md_kb: 8.9
+      total_kb: 103.0
+    task_metrics:
+      cmds_completed_24h: 1
+      avg_completion_minutes: 0
+      max_completion_minutes: 0
+    compaction_counts:
+      karo: 4
+      gunshi: 0
+      ashigaru1: 0
+      metsuke: 0
+      ashigaru2: 21
+      shogun: 0
+    alerts:
+    - level: warn
+      metric: context_size_kb
+      value: 103.0KB
+      threshold: 100KB
+      agent: 全エージェント共通
+
