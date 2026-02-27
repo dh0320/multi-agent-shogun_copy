@@ -109,6 +109,7 @@
 # Docs
 !docs/
 !docs/philosophy.md
+!docs/web-ui-implementation-tickets.md
 
 # Screenshots (masked — no secrets)
 !images/
@@ -167,3 +168,15 @@
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
+
+# Web UI scaffold
+!web/
+!web/README.md
+!web/backend/
+!web/backend/requirements.txt
+!web/backend/app/
+!web/backend/app/main.py
+!web/backend/dev_server.py
+!web/frontend/
+!web/frontend/index.html
+web/backend/.venv/
