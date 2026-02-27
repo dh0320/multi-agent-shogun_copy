@@ -23,7 +23,8 @@
       ul { padding-left: 18px; margin: 8px 0; }
       .error { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 10px; border-radius: 8px; }
       .empty { color: #6b7280; font-style: italic; }
-      .toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+      .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .hint { font-size: .85rem; color: #6b7280; }
       @media (min-width: 700px) {
         .card-grid { grid-template-columns: 1fr 1fr; }
         .tabs { grid-template-columns: repeat(4, max-content); justify-content: start; }
@@ -33,7 +34,7 @@
   <body>
     <main class="container">
       <h1>Shogun Dashboard MVP</h1>
-      <div class="toolbar"><button id="reload">再読み込み</button></div>
+      <div class="toolbar"><span class="hint" id="apiBaseHint"></span><button id="reload">再読み込み</button></div>
       <div class="tabs">
         <button data-tab="home" class="active">ホーム</button>
         <button data-tab="commands">コマンド</button>
@@ -48,7 +49,11 @@
     </main>
 
     <script>
-      const API_BASE = (localStorage.getItem('apiBase') || 'http://127.0.0.1:8000') + '/api/v1';
+      const queryApiBase = new URLSearchParams(window.location.search).get('apiBase');
+      const storedApiBase = localStorage.getItem('apiBase');
+      const selectedApiBase = queryApiBase || storedApiBase || 'http://127.0.0.1:8000';
+      const API_BASE = selectedApiBase.replace(/\/$/, '') + '/api/v1';
+      if (queryApiBase) localStorage.setItem('apiBase', queryApiBase);
       const state = { commands: [], tasks: [], reports: [], summary: null };
 
       async function api(path) {
@@ -147,6 +152,7 @@
           document.getElementById(btn.dataset.tab).classList.add('active');
         }
       });
+      document.getElementById('apiBaseHint').textContent = `API: ${selectedApiBase}`;
       document.getElementById('reload').onclick = load;
       load();
     </script>

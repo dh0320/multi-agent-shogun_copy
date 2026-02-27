@@ -7,7 +7,9 @@
 - `backend`: FastAPI + YAML読み取りAPI
 - `frontend`: モバイル優先の静的SPA
 
-## Backend 起動
+## ローカルで確認する
+
+### 1) Backend 起動
 
 ```bash
 cd web/backend
@@ -17,7 +19,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-## Frontend 起動
+### 2) Frontend 起動
 
 ```bash
 cd web/frontend
@@ -25,6 +27,26 @@ python3 -m http.server 5173 --bind 127.0.0.1
 ```
 
 ブラウザで `http://127.0.0.1:5173` を開きます。
+
+## GitHub Pages で確認する
+
+`main` ブランチに push されると、`web/frontend` が GitHub Pages に自動デプロイされます（workflow: `.github/workflows/deploy-web-ui.yml`）。
+
+1. GitHub リポジトリの **Settings → Pages** で Source を **GitHub Actions** にする
+2. `main` に push する
+3. Actions の `Deploy Web UI to GitHub Pages` が成功したら公開URLを開く
+
+### Pages上でAPI接続先を変える
+
+Pages上ではローカルAPI (`127.0.0.1`) へは繋がらないため、デフォルトでモック表示になります。
+
+外部公開済みAPIに接続する場合は URL に `apiBase` を指定します。
+
+```text
+https://<user>.github.io/<repo>/?apiBase=https://<your-api-host>
+```
+
+一度指定すると `localStorage` に保存され、次回以降も同じAPIを利用します。
 
 ## 主要API
 
