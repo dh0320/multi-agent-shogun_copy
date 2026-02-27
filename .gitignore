@@ -109,6 +109,7 @@
 # Docs
 !docs/
 !docs/philosophy.md
+!docs/web-ui-implementation-tickets.md
 
 # Screenshots (masked — no secrets)
 !images/
