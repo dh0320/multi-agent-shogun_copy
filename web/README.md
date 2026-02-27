@@ -36,6 +36,18 @@ python3 -m http.server 5173 --bind 127.0.0.1
 2. `main` に push する
 3. Actions の `Deploy Web UI to GitHub Pages` が成功したら公開URLを開く
 
+
+### デプロイ時によくあるエラー（404: Failed to create deployment）
+
+`actions/deploy-pages` で 404 が出る場合は、ほぼ未設定が原因です。
+
+1. `https://github.com/<owner>/<repo>/settings/pages` を開く
+2. **Build and deployment → Source** を **GitHub Actions** に設定
+3. リポジトリの **Actions permissions** が無効化されていないか確認
+4. `Deploy Web UI to GitHub Pages` を **Re-run jobs** する
+
+このリポジトリでは workflow に `actions/configure-pages@v5` を追加済みです。
+
 ### Pages上でAPI接続先を変える
 
 Pages上ではローカルAPI (`127.0.0.1`) へは繋がらないため、デフォルトでモック表示になります。
