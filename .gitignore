@@ -176,6 +176,9 @@
 !web/backend/requirements.txt
 !web/backend/app/
 !web/backend/app/main.py
+!web/backend/app/__init__.py
+!web/backend/app/schemas.py
+!web/backend/app/yaml_reader.py
 !web/backend/dev_server.py
 !web/frontend/
 !web/frontend/index.html

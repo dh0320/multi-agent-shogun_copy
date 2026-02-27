@@ -3,33 +3,158 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>multi-agent-shogun Web UI (TKT-001 scaffold)</title>
+    <title>multi-agent-shogun Web UI MVP</title>
     <style>
-      body { font-family: sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-      code { background: #f4f4f4; padding: 0.1rem 0.3rem; border-radius: 4px; }
-      button { padding: 0.5rem 1rem; }
-      pre { background: #111; color: #0f0; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      :root { color-scheme: light; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f4f6fb; color: #1f2937; }
+      .container { max-width: 980px; margin: 0 auto; padding: 14px; }
+      h1 { font-size: 1.35rem; margin: 0 0 8px; }
+      .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+      .tabs button { border: 0; background: #dde3f2; border-radius: 8px; padding: 10px; font-weight: 600; }
+      .tabs button.active { background: #1d4ed8; color: #fff; }
+      .panel { display: none; }
+      .panel.active { display: block; }
+      .card-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+      .card, .list { background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+      .kpi { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .kpi .value { font-size: 1.3rem; font-weight: 700; }
+      .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+      input, select { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px; }
+      ul { padding-left: 18px; margin: 8px 0; }
+      .error { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 10px; border-radius: 8px; }
+      .empty { color: #6b7280; font-style: italic; }
+      .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .hint { font-size: .85rem; color: #6b7280; }
+      @media (min-width: 700px) {
+        .card-grid { grid-template-columns: 1fr 1fr; }
+        .tabs { grid-template-columns: repeat(4, max-content); justify-content: start; }
+      }
     </style>
   </head>
   <body>
-    <h1>Web UI Scaffold</h1>
-    <p>TKT-001用の最小フロントエンド雛形です。</p>
-    <p>バックエンドのヘルスチェック: <code>GET /api/v1/health</code></p>
-    <button id="check">Health Check</button>
-    <pre id="result">まだ実行していません</pre>
+    <main class="container">
+      <h1>Shogun Dashboard MVP</h1>
+      <div class="toolbar"><span class="hint" id="apiBaseHint"></span><button id="reload">再読み込み</button></div>
+      <div class="tabs">
+        <button data-tab="home" class="active">ホーム</button>
+        <button data-tab="commands">コマンド</button>
+        <button data-tab="tasks">タスク</button>
+        <button data-tab="reports">レポート</button>
+      </div>
+
+      <section id="home" class="panel active"></section>
+      <section id="commands" class="panel"></section>
+      <section id="tasks" class="panel"></section>
+      <section id="reports" class="panel"></section>
+    </main>
 
     <script>
-      const button = document.getElementById('check');
-      const result = document.getElementById('result');
-      button.addEventListener('click', async () => {
+      const queryApiBase = new URLSearchParams(window.location.search).get('apiBase');
+      const storedApiBase = localStorage.getItem('apiBase');
+      const selectedApiBase = queryApiBase || storedApiBase || 'http://127.0.0.1:8000';
+      const API_BASE = selectedApiBase.replace(/\/$/, '') + '/api/v1';
+      if (queryApiBase) localStorage.setItem('apiBase', queryApiBase);
+      const state = { commands: [], tasks: [], reports: [], summary: null };
+
+      async function api(path) {
+        const res = await fetch(`${API_BASE}${path}`);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message);
+        return json.data;
+      }
+
+      function renderError(message) { return `<div class="error">${message}</div>`; }
+      function renderEmpty(message) { return `<p class="empty">${message}</p>`; }
+
+      function renderHome() {
+        const root = document.getElementById('home');
+        if (!state.summary) { root.innerHTML = renderEmpty('データなし'); return; }
+        const s = state.summary.summary;
+        root.innerHTML = `
+          <div class="card-grid">
+            <div class="card"><div>進行中</div><div class="value">${s.in_progress_count}</div></div>
+            <div class="card"><div>完了</div><div class="value">${s.done_count}</div></div>
+            <div class="card"><div>要対応</div><div class="value">${s.action_required_count}</div></div>
+            <div class="card"><div>最終更新</div><div>${s.latest_updated_at ?? 'N/A'}</div></div>
+          </div>
+          <div class="list">
+            <h3>最新レポート</h3>
+            ${s.latest_reports.length ? `<ul>${s.latest_reports.map(x => `<li>${x.id} (${x.agent ?? 'unknown'})</li>`).join('')}</ul>` : renderEmpty('レポートがありません')}
+          </div>`;
+      }
+
+      function renderCommands() {
+        const root = document.getElementById('commands');
+        const status = document.getElementById('cmd-status')?.value || '';
+        const project = document.getElementById('cmd-project')?.value || '';
+        let rows = state.commands;
+        if (status) rows = rows.filter(x => x.status === status);
+        if (project) rows = rows.filter(x => x.project === project);
+        const projects = [...new Set(state.commands.map(x => x.project).filter(Boolean))];
+        root.innerHTML = `<div class="filters">
+            <select id="cmd-status"><option value="">全status</option><option>assigned</option><option>done</option><option>pending</option><option>pending_blocked</option></select>
+            <select id="cmd-project"><option value="">全project</option>${projects.map(p => `<option>${p}</option>`).join('')}</select>
+          </div>
+          ${rows.length ? `<div class="list"><ul>${rows.map(x => `<li><b>${x.id}</b> [${x.status ?? '-'}] ${x.purpose ?? ''}</li>`).join('')}</ul></div>` : renderEmpty('該当コマンドなし')}`;
+        document.getElementById('cmd-status').value = status;
+        document.getElementById('cmd-project').value = project;
+        document.getElementById('cmd-status').onchange = renderCommands;
+        document.getElementById('cmd-project').onchange = renderCommands;
+      }
+
+      function renderTasks() {
+        const root = document.getElementById('tasks');
+        const agent = document.getElementById('task-agent')?.value || '';
+        const agents = [...new Set(state.tasks.map(x => x.agent).filter(Boolean))];
+        let rows = state.tasks;
+        if (agent) rows = rows.filter(x => x.agent === agent);
+        root.innerHTML = `<div class="filters"><select id="task-agent"><option value="">全agent</option>${agents.map(a => `<option>${a}</option>`).join('')}</select></div>
+          ${rows.length ? `<div class="list"><ul>${rows.map(x => `<li><b>${x.id}</b> (${x.agent ?? '-'}) - ${x.status ?? '-'}</li>`).join('')}</ul></div>` : renderEmpty('タスクなし')}`;
+        document.getElementById('task-agent').value = agent;
+        document.getElementById('task-agent').onchange = renderTasks;
+      }
+
+      function renderReports() {
+        const root = document.getElementById('reports');
+        const rows = [...state.reports].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+        root.innerHTML = rows.length ? `<div class="list"><ul>${rows.map(x => `<li><b>${x.id}</b> (${x.agent ?? '-'}) ${x.timestamp ?? ''}</li>`).join('')}</ul></div>` : renderEmpty('レポートなし');
+      }
+
+      function mockData() {
+        state.summary = { summary: { in_progress_count: 2, done_count: 5, action_required_count: 1, latest_updated_at: new Date().toISOString(), latest_reports: [{ id: 'report_demo_1', agent: 'ashigaru1' }] } };
+        state.commands = [{ id: 'cmd_demo_001', status: 'assigned', project: 'demo', purpose: 'UI確認用モック' }];
+        state.tasks = [{ id: 'task_demo_001', status: 'assigned', agent: 'ashigaru1' }];
+        state.reports = [{ id: 'report_demo_1', status: 'done', agent: 'ashigaru1', timestamp: new Date().toISOString() }];
+      }
+
+      async function load() {
         try {
-          const res = await fetch('http://127.0.0.1:8000/api/v1/health');
-          const json = await res.json();
-          result.textContent = JSON.stringify(json, null, 2);
-        } catch (err) {
-          result.textContent = `error: ${err}`;
+          const [summary, commands, tasks, reports] = await Promise.all([
+            api('/dashboard/summary'), api('/commands?limit=200'), api('/tasks'), api('/reports')
+          ]);
+          state.summary = summary;
+          state.commands = commands;
+          state.tasks = tasks;
+          state.reports = reports;
+          renderHome(); renderCommands(); renderTasks(); renderReports();
+        } catch (e) {
+          mockData();
+          renderHome(); renderCommands(); renderTasks(); renderReports();
+          document.getElementById('home').insertAdjacentHTML('afterbegin', renderError(`API取得失敗のためモック表示: ${e.message}`));
+        }
+      }
+
+      document.querySelectorAll('.tabs button').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+          document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(btn.dataset.tab).classList.add('active');
         }
       });
+      document.getElementById('apiBaseHint').textContent = `API: ${selectedApiBase}`;
+      document.getElementById('reload').onclick = load;
+      load();
     </script>
   </body>
 </html>
